@@ -15,12 +15,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
   clauses (`conjugates` / `typed by` / `chains` / `crosses` / `disjoint from` /
   `unions` / `intersects` …), KerML connectors (`binding`/`connector`/`succession`
   with multiplicities and `from … to …` / `first … then …`), `inv` invariants and
-  standalone relationship elements. Measured against the official OMG corpus, parse
-  errors dropped ~82% on the KerML examples and the full standard library. KerML
-  moves from **None** to **Parse-only** in the [conformance matrix](docs/conformance.md).
-  KerML keywords that are also library element names (`step` / `feature` / `type`)
-  still resolve as references. First step of an initiative to track the official
-  OMG grammar; semantic validation / visualization of the KerML layer is future work.
+  standalone relationship elements. Reserved KerML keywords stay usable as
+  *referenced* element names (the standard library names features `step` / `type` /
+  `decide` / `merge` / `member` and references them bare). Measured against the
+  official OMG corpus, parse errors dropped ~88% on the KerML examples (417→49) and
+  the full standard library (679→79). KerML moves from **None** to **Parse-only** in
+  the [conformance matrix](docs/conformance.md). First step of an initiative to track
+  the official OMG grammar; semantic validation / visualization of the KerML layer,
+  expression bodies (`->` lambdas) and a few connector forms remain future work.
 
 - **GitHub Releases are automated** — pushing a `v<version>` tag now also creates
   (or updates) a GitHub Release, using the matching `CHANGELOG.md` section as the

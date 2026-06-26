@@ -144,6 +144,21 @@ test("keeps KerML keywords usable as referenced names", () => {
   assert.deepStrictEqual(r.errors, []);
   assert.deepStrictEqual(find(r.root, "f").specializes, ["step"]);
   assert.deepStrictEqual(find(r.root, "g").typedBy, ["type"]);
+  // even control-flow keywords are valid names where the library uses them so
+  const r2 = parseSysML(`package P { succession first shoot::s.shoot then decide::d.decide; }`);
+  assert.deepStrictEqual(r2.errors, []);
+});
+
+test("parses KerML succession / binding / disjoining variants", () => {
+  const r = parseSysML(`package P {
+    succession [1] ifTest then [0..1] thenClause;
+    succession redefines s : Link [1] first paint then dry;
+    succession all [*] acceptable then [*] guard;
+    binding ab of a = b;
+    feature x from [1] self references occ;
+    disjoint b.f.a from b.a;
+  }`);
+  assert.deepStrictEqual(r.errors, [], "succession/binding/disjoining variants parse");
 });
 
 // ---- resolver -------------------------------------------------------------
