@@ -91,6 +91,8 @@ GitHub Actions が **3 つすべて**を公開します:
 3. 自動公開:
    - **VS Code Marketplace** + **Open VSX**(`publish-extension.yml`、`release` 環境の承認後)
    - **npm `@engineer-fumi/sysml-v2-mcp`**(`publish-mcp.yml`、OIDC トークンレス)
+   - **GitHub Release**(`github-release.yml`、`CHANGELOG.md` の該当節をノート化。
+     シークレット不要・承認ゲートなし)
 
 初回のみ必要な設定(リポジトリ → Settings → Environments → `release`):
 - Secret `VSCE_PAT`(Azure DevOps PAT、スコープ *Marketplace > Manage*、有効期限つき)
