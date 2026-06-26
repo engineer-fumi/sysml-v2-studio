@@ -1,0 +1,45 @@
+name: Publish MCP package
+
+# Publishes @engineer-fumi/sysml-v2-mcp to npm using OIDC Trusted Publishing —
+# no long-lived npm token is stored. Trusted publishing requires the npm package
+# to already exist and a trusted publisher to be configured on npmjs.com
+# (Package settings → Trusted Publisher → GitHub Actions: repo
+# engineer-fumi/sysml-v2-studio, workflow publish-mcp.yml). The first publish was
+# done manually with a short-lived token; this workflow handles every release
+# after that.
+#
+# Trigger: push a tag like `mcp-v0.7.0` (or run manually). The version actually
+# published is whatever is in package.json (build-mcp-package.mjs syncs it), so
+# bump the version, then tag.
+
+on:
+  push:
+    tags:
+      - "mcp-v*"
+  workflow_dispatch: {}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # required for OIDC trusted publishing + provenance
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: "https://registry.npmjs.org"
+          cache: npm
+      - run: npm ci
+      # trusted publishing + `npm publish --provenance` need npm >= 11.5.1
+      - name: Update npm
+        run: npm install -g npm@latest
+      - name: Build MCP package + smoke test
+        run: |
+          npm run build:mcp:pkg
+          node scripts/smoke-mcp.mjs
+      - name: Publish to npm (Trusted Publishing / OIDC)
+        # no NODE_AUTH_TOKEN: npm detects the GitHub OIDC environment and uses it.
+        # --provenance attaches a signed build attestation (repo is public).
+        run: npm publish ./dist/npm --access public --provenance

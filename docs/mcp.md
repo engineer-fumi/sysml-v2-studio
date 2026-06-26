@@ -125,16 +125,32 @@ npx 経路(方法 A)用の npm パッケージ `@engineer-fumi/sysml-v2-mcp` は
 ```bash
 npm run build:mcp:pkg   # dist/npm/ に publish 可能なパッケージを生成
 npm run smoke:mcp       # 生成物を stdio で起動して initialize / tools/list / tools/call を検証
-npm run publish:mcp     # build:mcp:pkg → smoke:mcp → npm publish dist/npm --access public
+npm run publish:mcp     # build:mcp:pkg → smoke:mcp → npm publish ./dist/npm --access public
 ```
 
 - **バージョン同期**: `scripts/build-mcp-package.mjs` がルート `package.json` の
   `version` をそのまま採用するため、拡張(`sysml-v2-studio`)とパッケージのバージョンは
   常に一致します。リリース時はルートの `version` を上げるだけです。
-- **公開には npm トークンが必要**(vsce と同様、人手の操作)。`npm publish` は
-  `dist/npm` ディレクトリに対して行い、リポジトリ全体は公開しません。
 - 生成物(`dist/npm/`)はビルド成果物で、`dist/` ごと `.gitignore` 済みです。
   古いバンドルを publish しないよう、`publish:mcp` は毎回 `build:mcp` から作り直します。
+- `npm publish` のパスは **`./dist/npm`**(先頭の `./` 必須)。`dist/npm` だと npm が
+  GitHub ショートハンド `owner/repo` と誤認します。
+
+### リリースの流れ(2 回目以降は OIDC でトークンレス)
+
+初回 `0.6.0` は短期トークンで手動公開済み。以降は **GitHub Actions の Trusted
+Publishing(OIDC)** で公開し、npm トークンは保存しません
+(`.github/workflows/publish-mcp.yml`)。
+
+1. ルート `package.json` の `version` を上げて main にマージ。
+2. タグ `mcp-v<version>`(例 `mcp-v0.7.0`)を push、または Actions から手動実行。
+3. ワークフローが build → smoke → `npm publish ./dist/npm --access public --provenance`
+   を OIDC 認証で実行(短期・署名付きトークン。`--provenance` で来歴も添付)。
+
+**初回セットアップ(済ませること)**: npmjs.com のパッケージ設定 → *Trusted Publisher*
+→ GitHub Actions を追加(repo `engineer-fumi/sysml-v2-studio`、workflow
+`publish-mcp.yml`)。これにより長期トークン不要・2FA バイパス不要になります。
+手動公開が必要な場合のみ、短期(1 日)・使用後すぐ失効させるトークンを使ってください。
 
 ## トラブルシューティング
 
