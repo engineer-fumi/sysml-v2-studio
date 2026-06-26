@@ -22,6 +22,21 @@ jobs:
       - name: Unit tests (layout + geometry + parser + hooks + fuzz)
         run: npm run test:unit
 
+  mcp-package:
+    runs-on: ubuntu-latest
+    needs: core
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Build standalone MCP npm package
+        run: npm run build:mcp:pkg
+      - name: Smoke test (initialize / tools/list / tools/call over stdio)
+        run: node scripts/smoke-mcp.mjs
+
   webview-e2e:
     runs-on: ubuntu-latest
     needs: core

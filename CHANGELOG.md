@@ -6,6 +6,13 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Standalone MCP npm package** — `@engineer-fumi/sysml-v2-mcp` so non–VS Code
+  clients register with one line: `npx -y @engineer-fumi/sysml-v2-mcp <dir>`.
+  Built from the bundled server via `npm run build:mcp:pkg` (version synced from
+  the extension), with a stdio smoke test (`npm run smoke:mcp`) wired into CI.
+
 ## [0.6.0] — 2026-06-25
 
 ### Added
