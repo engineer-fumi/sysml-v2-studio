@@ -6,6 +6,13 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Automated releases** — pushing a `v<version>` tag now publishes the extension
+  to the VS Code Marketplace and Open VSX (`publish-extension.yml`, gated behind a
+  protected `release` environment) and the npm MCP package via OIDC
+  (`publish-mcp.yml`). One version bump + one tag ships everything.
+
 ## [0.7.0] — 2026-06-26
 
 ### Added

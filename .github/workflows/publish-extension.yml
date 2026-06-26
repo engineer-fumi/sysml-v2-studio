@@ -1,0 +1,53 @@
+name: Publish extension
+
+# Publishes the VS Code extension when a `v*` tag is pushed (or on manual
+# dispatch): to the VS Code Marketplace, and to Open VSX if an OVSX_PAT is set.
+#
+# The Marketplace has no OIDC / trusted publishing, so it needs a stored PAT.
+# It lives in the protected `release` environment — add required reviewers there
+# so a human approves each release before the long-lived PAT is ever used.
+#
+# One-time setup (repo → Settings → Environments → `release`):
+#  - Secret `VSCE_PAT`: Azure DevOps PAT, scope "Marketplace > Manage",
+#    Organization "All accessible organizations", with an expiry.
+#  - (optional) Secret `OVSX_PAT`: Open VSX access token to also publish there
+#    (VSCodium / Cursor / Gitpod). Omit it and the Open VSX step is skipped.
+#  - Add required reviewers to gate the PAT behind approval.
+#
+# Release flow: bump `version` in package.json (it drives both the VSIX and the
+# npm package), update CHANGELOG, then push tag `v<version>` (e.g. v0.8.0). This
+# workflow publishes the extension; publish-mcp.yml publishes the npm package via
+# OIDC on the same tag.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+    env:
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      OVSX_PAT: ${{ secrets.OVSX_PAT }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - run: npm ci
+      - name: Build + package the extension (single VSIX for both registries)
+        run: |
+          npm run build
+          npm run build:mcp
+          npx @vscode/vsce package --allow-missing-repository -o extension.vsix
+      - name: Publish to VS Code Marketplace
+        run: npx @vscode/vsce publish --packagePath extension.vsix
+      - name: Publish to Open VSX (skipped if OVSX_PAT is not set)
+        if: ${{ env.OVSX_PAT != '' }}
+        run: npx ovsx publish extension.vsix --pat "$OVSX_PAT"
