@@ -38,6 +38,30 @@
 | **状態遷移図** | **アクティビティ図** |
 | ![状態遷移図](docs/images/diagram-state.png) | ![アクティビティ図](docs/images/diagram-action.png) |
 
+## SysML v2 対応範囲
+
+本拡張は OMG SysML v2 テキスト記法の**実用サブセット**を実装しています(コード監査に
+基づく概要。詳細・根拠は [対応範囲 (conformance matrix)](docs/conformance.md) を参照)。
+
+| 言語領域 | 対応レベル |
+|---|---|
+| Definitions & Usages (part / item / attribute / port / action / state …) | **Full** |
+| Specialization (`:>` / `:>>` / `specializes` / `subsets` / `redefines`) | **Full** |
+| Connections / Interfaces / Bindings / Flows | **Full**(構造) |
+| Requirements / Constraints / satisfy・verify | **Full**(構造)/ 式は不透明 |
+| Use Cases / Actors / include・perform | **Full** |
+| Metadata / Annotations (`@`, `#`, `metadata def`) | **Full**(パース) |
+| Comments / Documentation (`//`, `/* */`, `doc`, `comment`) | **Full** |
+| States & Transitions / Actions / Calc | **Partial**(trigger/guard/効果・制御フローは不透明) |
+| Views / Viewpoints / Rendering | **Partial**(レンダリング非実装) |
+| Imports / Aliases / Visibility | **Partial**(private/protected は非強制) |
+| Expressions(constraint / calc 本体・値) | **Parse-only**(不透明テキスト・型チェックなし) |
+| Standard Library | **最小サブセット同梱**(完全な OMG ライブラリではない) |
+| KerML 基盤層 (classifier / feature / function …) | **None** |
+
+> レベルの定義(Full / Partial / Parse-only / None)と各領域の根拠は
+> [conformance matrix](docs/conformance.md) に記載しています。
+
 ## インストール
 
 VS Code Marketplace で **「SysML v2 Studio」** を検索してインストール、または:
@@ -84,6 +108,7 @@ claude mcp add sysml -- npx -y @engineer-fumi/sysml-v2-mcp "$(pwd)"
 
 - [ダイアグラム機能の詳細](docs/diagrams.md) — 図の種類・編集操作・レイアウト保存
 - [対応記法と制限事項](docs/syntax.md) — サポートする SysML v2 サブセット
+- [対応範囲 (conformance matrix)](docs/conformance.md) — 言語領域 × 対応レベルの詳細表
 - [Claude (MCP) 連携ガイド](docs/mcp.md) — MCP サーバの登録・ツール・活用例
 - [開発ガイド](docs/development.md) — アーキテクチャ・ビルド・テスト・公開
 

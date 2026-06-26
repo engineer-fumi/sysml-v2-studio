@@ -16,6 +16,9 @@ project adheres to [Semantic Versioning](https://semver.org/).
   clients register with one line: `npx -y @engineer-fumi/sysml-v2-mcp <dir>`.
   Built from the bundled server via `npm run build:mcp:pkg` (version synced from
   the extension), with a stdio smoke test (`npm run smoke:mcp`) wired into CI.
+- **SysML v2 conformance matrix** ([docs/conformance.md](docs/conformance.md))
+  documenting, with code-level evidence, which language areas are Full / Partial /
+  Parse-only / None. Summary table added to the README.
 
 ### Changed
 

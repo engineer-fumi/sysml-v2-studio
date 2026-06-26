@@ -1,5 +1,8 @@
 # 対応する SysML v2 記法と制限事項
 
+> 言語領域ごとの対応レベルを根拠付きで一覧化した
+> [対応範囲 (conformance matrix)](conformance.md) も参照してください。
+
 ## 言語サポート
 
 - シンタックスハイライト(TextMate 文法)
