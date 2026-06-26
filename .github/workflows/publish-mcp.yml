@@ -8,14 +8,15 @@ name: Publish MCP package
 # done manually with a short-lived token; this workflow handles every release
 # after that.
 #
-# Trigger: push a tag like `mcp-v0.7.0` (or run manually). The version actually
-# published is whatever is in package.json (build-mcp-package.mjs syncs it), so
-# bump the version, then tag.
+# Trigger: push a `v*` tag (the same tag that releases the extension — see
+# publish-extension.yml) or run manually. The version actually published is
+# whatever is in package.json (build-mcp-package.mjs syncs it), so bump the
+# version, then tag `v<version>`.
 
 on:
   push:
     tags:
-      - "mcp-v*"
+      - "v*"
   workflow_dispatch: {}
 
 jobs:

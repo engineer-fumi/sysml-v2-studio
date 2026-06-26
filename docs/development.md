@@ -81,15 +81,31 @@ npm run gen:icon          # media/icon.png を再生成
 
 ## パッケージング / 公開
 
+### リリース(自動・推奨)
+
+`package.json` の `version` を上げて `v<version>` タグを push するだけで、
+GitHub Actions が **3 つすべて**を公開します:
+
+1. `CHANGELOG.md` を更新し、`package.json` の `version` を上げて main にマージ
+2. `git tag v<version> && git push origin v<version>`(例 `v0.8.0`)
+3. 自動公開:
+   - **VS Code Marketplace** + **Open VSX**(`publish-extension.yml`、`release` 環境の承認後)
+   - **npm `@engineer-fumi/sysml-v2-mcp`**(`publish-mcp.yml`、OIDC トークンレス)
+
+初回のみ必要な設定(リポジトリ → Settings → Environments → `release`):
+- Secret `VSCE_PAT`(Azure DevOps PAT、スコープ *Marketplace > Manage*、有効期限つき)
+- 任意: Secret `OVSX_PAT`(Open VSX 公開も行う場合。無ければ Open VSX はスキップ)
+- 承認制にするため required reviewers を設定(長期 PAT をレビューでゲート)
+
+npm 側の Trusted Publisher 設定は [docs/mcp.md](mcp.md) を参照。
+
+### ローカルでパッケージング / 手動公開
+
 ```bash
 npm run package           # sysml-v2-studio-<version>.vsix を生成 (MCP サーバ同梱)
 code --install-extension sysml-v2-studio-<version>.vsix   # ローカル導入
 
-# Marketplace へ公開 (発行者の Personal Access Token が必要)
+# Marketplace へ手動公開 (発行者の Personal Access Token が必要)
 npx @vscode/vsce login engineer-fumi
 npx @vscode/vsce publish        # package.json の version で公開
-# または: npx @vscode/vsce publish patch|minor|major
 ```
-
-リリース時は `CHANGELOG.md` を更新し、`package.json` の `version` を上げ、
-`v<version>` の git タグを打ちます。
