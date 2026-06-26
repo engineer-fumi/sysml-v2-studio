@@ -86,23 +86,41 @@ code --install-extension engineer-fumi.sysml-v2-studio
 
 ## Claude (MCP) 連携
 
-拡張に**スタンドアロンの MCP サーバ**を同梱しています。登録すると、Claude がモデルを
-**テキストとしてではなく構造として**扱えます — 解析・検証・要求一覧・ダイアグラム構造の
-取得をツールとして提供します。
+拡張に**スタンドアロンの MCP サーバ**を同梱しています。Claude などの AI が `.sysml`
+モデルを**テキストとしてではなく構造として**扱えるようになります — 解析・検証・要求
+一覧・ダイアグラム構造の取得をツールとして提供します。
 
-**VS Code 1.101 以上で本拡張を使っている場合は設定ゼロ** — 拡張が VS Code のネイティブ
-MCP API で同梱サーバを自動登録します(コマンドパレットの **「MCP: List Servers」** で確認)。
+**使う相手によって、やることは次の 2 つのどちらかです。**
 
-Claude Desktop / Claude Code など **VS Code 以外**のクライアントは、OS・エディタ非依存で
-パス探し不要の **npx** 一行で登録できます(プロジェクト直下で実行):
+### ① VS Code の AI(Copilot / agent)から使う → 設定不要
+
+VS Code **1.101 以上**で本拡張をインストールしていれば、**何もする必要はありません**。
+拡張が MCP サーバを自動登録します。コマンドパレットで **「MCP: List Servers」** を開き、
+**「SysML v2 Studio」** が一覧にあれば有効です。
+
+### ② Claude Code / Claude Desktop から使う → 1 行で登録
+
+**Claude Code**(VS Code とは別のクライアント)の場合、プロジェクトのルートで次を 1 回
+実行するだけです(`npx` なので事前インストール不要):
 
 ```bash
 claude mcp add sysml -- npx -y @engineer-fumi/sysml-v2-mcp "$(pwd)"
 ```
 
-公開ツール: `list_files` / `outline` / `validate` / `find_element` /
-`list_requirements` / `describe_diagram`。設定例と詳細は
-[Claude (MCP) 連携ガイド](docs/mcp.md) を参照してください。
+**Claude Desktop** の場合は設定ファイルに次を追加します:
+
+```jsonc
+{ "mcpServers": { "sysml": {
+  "command": "npx",
+  "args": ["-y", "@engineer-fumi/sysml-v2-mcp", "<モデルのフォルダの絶対パス>"]
+} } }
+```
+
+---
+
+提供ツール: `list_files` / `outline` / `validate` / `find_element` /
+`list_requirements` / `describe_diagram`。登録方法のバリエーション(パス指定・自前
+ビルド)・ツールの詳細・活用例は [Claude (MCP) 連携ガイド](docs/mcp.md) を参照。
 
 ## ドキュメント
 
