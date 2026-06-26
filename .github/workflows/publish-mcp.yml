@@ -28,11 +28,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Trusted publishing requires Node >= 22.14.0 (and npm >= 11.5.1);
+          # Node 20 silently skips OIDC registry auth and the publish 404s.
+          node-version: 24
           registry-url: "https://registry.npmjs.org"
           cache: npm
       - run: npm ci
-      # trusted publishing + `npm publish --provenance` need npm >= 11.5.1
+      # ensure npm >= 11.5.1 for trusted publishing
       - name: Update npm
         run: npm install -g npm@latest
       - name: Build MCP package + smoke test
@@ -40,6 +42,6 @@ jobs:
           npm run build:mcp:pkg
           node scripts/smoke-mcp.mjs
       - name: Publish to npm (Trusted Publishing / OIDC)
-        # no NODE_AUTH_TOKEN: npm detects the GitHub OIDC environment and uses it.
-        # --provenance attaches a signed build attestation (repo is public).
-        run: npm publish ./dist/npm --access public --provenance
+        # No NODE_AUTH_TOKEN: npm detects the GitHub OIDC environment and uses it,
+        # and auto-generates a provenance attestation (no --provenance flag needed).
+        run: npm publish ./dist/npm --access public
