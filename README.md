@@ -62,12 +62,15 @@ code --install-extension engineer-fumi.sysml-v2-studio
 
 ## Claude (MCP) 連携
 
-拡張に**スタンドアロンの MCP サーバ**を同梱しています。Claude Desktop /
-Claude Code に登録すると、Claude がモデルを**テキストとしてではなく構造として**
-扱えます — 解析・検証・要求一覧・ダイアグラム構造の取得をツールとして提供します。
+拡張に**スタンドアロンの MCP サーバ**を同梱しています。登録すると、Claude がモデルを
+**テキストとしてではなく構造として**扱えます — 解析・検証・要求一覧・ダイアグラム構造の
+取得をツールとして提供します。
 
-Claude Desktop / Claude Code には、OS・エディタ非依存でパス探し不要の **npx** 一行で
-登録できます(プロジェクト直下で実行):
+**VS Code 1.101 以上で本拡張を使っている場合は設定ゼロ** — 拡張が VS Code のネイティブ
+MCP API で同梱サーバを自動登録します(コマンドパレットの **「MCP: List Servers」** で確認)。
+
+Claude Desktop / Claude Code など **VS Code 以外**のクライアントは、OS・エディタ非依存で
+パス探し不要の **npx** 一行で登録できます(プロジェクト直下で実行):
 
 ```bash
 claude mcp add sysml -- npx -y @engineer-fumi/sysml-v2-mcp "$(pwd)"

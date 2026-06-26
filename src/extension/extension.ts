@@ -9,6 +9,7 @@ import {
   registerDocumentSymbols,
   registerHover,
 } from "./languageFeatures";
+import { registerMcpServerProvider } from "./mcpProvider";
 import { BUILTIN_SCHEME, ModelIndex } from "./modelIndex";
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -30,6 +31,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   registerDocumentSymbols(context, index);
   registerDefinition(context, index);
   registerHover(context, index);
+
+  // zero-config MCP server for extension users (VS Code 1.101+ native API)
+  registerMcpServerProvider(context);
 
   context.subscriptions.push(
     vscode.commands.registerCommand("sysml.openDiagram", () => {
