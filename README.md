@@ -2,92 +2,102 @@
 
 # SysML v2 Studio
 
-**SysML v2 (`.sysml` / `.kerml`) を VS Code で書く・見る・編集する**
+**Write, view and edit SysML v2 (`.sysml` / `.kerml`) in VS Code**
 
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/engineer-fumi.sysml-v2-studio?label=Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=engineer-fumi.sysml-v2-studio)
 [![Installs](https://img.shields.io/visual-studio-marketplace/i/engineer-fumi.sysml-v2-studio?label=Installs)](https://marketplace.visualstudio.com/items?itemName=engineer-fumi.sysml-v2-studio)
 [![MCP on npm](https://img.shields.io/npm/v/%40engineer-fumi%2Fsysml-v2-mcp?label=MCP%20npm&logo=npm)](https://www.npmjs.com/package/@engineer-fumi/sysml-v2-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-言語サポート(ハイライト・診断・補完・定義ジャンプ)に加え、**8 種類の編集可能な
-ダイアグラム**と **Claude (MCP) 連携**を備えた SysML v2 拡張です。
+**English** · [日本語](README.ja.md) · [简体中文](README.zh-Hans.md)
 
-![全体図](docs/images/diagram-general.png)
+A SysML v2 extension with full language support (highlighting, diagnostics,
+completion, go-to-definition) plus **8 kinds of editable diagrams** and
+**Claude (MCP) integration**.
+
+![Overview diagram](docs/images/diagram-general.png)
 
 </div>
 
-## 特長
+## Features
 
-- 🎨 **8 種類のダイアグラム** — 全体図 / ブロック定義図 / 内部ブロック図 / 要求図 / ユースケース図 / 状態遷移図 / アクティビティ図 / シーケンス図
-- ✏️ **図から直接編集** — 移動・リサイズ・接続作成・リネーム・削除を**テキストへ書き戻し**(手動レイアウトはサイドカーに保存)
-- 🔎 **言語サポート** — シンタックスハイライト、リアルタイム診断(構文 + 意味)、補完、アウトライン、ファイル横断の定義ジャンプ・ホバー
-- 🔗 **双方向同期** — 図クリック ⇄ ソースジャンプ、カーソル ⇄ ハイライト
-- 🤖 **Claude (MCP) 連携** — モデルを**構造として**解析・検証・取得(Claude Code / Desktop / VS Code の AI)
-- 📦 **マルチファイル / リモート対応**(Remote-SSH / WSL / Dev Containers)、📚 **標準ライブラリ同梱** + **OMG 公式サンプル**
+- 🎨 **8 diagram kinds** — overview / block definition (BDD) / internal block (IBD) / requirement / use case / state / activity / sequence
+- ✏️ **Edit straight from the diagram** — move, resize, connect, rename and delete, all **written back to the text** (manual layout saved to a sidecar)
+- 🔎 **Language support** — syntax highlighting, real-time diagnostics (syntactic + semantic), completion, outline, cross-file go-to-definition and hover
+- 🔗 **Two-way sync** — click a diagram element ⇄ jump to source, editor cursor ⇄ highlight in the diagram
+- 🤖 **Claude (MCP) integration** — analyze, validate and query the model **as structure** (Claude Code / Desktop / VS Code AI)
+- 📦 **Multi-file / remote ready** (Remote-SSH / WSL / Dev Containers), 📚 **bundled standard library** + **official OMG samples**
 
-## インストール
+## Installation
 
-VS Code Marketplace で **「SysML v2 Studio」** を検索してインストール、または:
+Search for **“SysML v2 Studio”** in the VS Code Marketplace and install, or:
 
 ```bash
 code --install-extension engineer-fumi.sysml-v2-studio
 ```
 
-> 要件: VS Code **1.101 以上**。ソースから `.vsix` を作る場合は [開発ガイド](docs/development.md) を参照。
+> Requires VS Code **1.101 or later**. To build a `.vsix` from source, see the
+> [development guide](docs/development.md).
 
-## クイックスタート — 図をプレビューする
+## Quick start — preview a diagram
 
-1. **`.sysml` / `.kerml` ファイルを開く**(まずは同梱の `samples/` を開くのが手軽です)
-2. エディタ右上の **図アイコン**、またはコマンドパレットの **「SysML: ダイアグラムを開く」** を実行
-   → ダイアグラムがエディタの隣にプレビュー表示されます
-3. パネル上部のセレクタ、または **「SysML: 図の種類を選んで開く」** で 8 種類を切り替え
-4. ブロックを**ドラッグ**して配置、**右クリック**で接続・線種・削除などを操作
-   → 変更は**ソーステキストに自動で書き戻し**(配置は `.sysml-layout.json` に保存)
+1. **Open a `.sysml` / `.kerml` file** (the bundled `samples/` are the easiest start)
+2. Click the **diagram icon** at the top-right of the editor, or run
+   **“SysML: Open Diagram”** from the Command Palette
+   → the diagram previews next to the editor
+3. Switch between the 8 kinds via the selector at the top of the panel, or
+   **“SysML: Open Diagram by Kind”**
+4. **Drag** boxes to lay them out, **right-click** to connect / change line style / delete
+   → changes are **written back to the source text automatically** (layout saved to `.sysml-layout.json`)
 
-図の要素をクリックすると対応するソース行へジャンプし、エディタのカーソル位置は図側でハイライトされます。
+Click an element in the diagram to jump to the matching source line; the editor
+cursor position is highlighted back in the diagram.
 
-## Claude (MCP) 連携
+## Claude (MCP) integration
 
-拡張に**スタンドアロンの MCP サーバ**を同梱しています。Claude などの AI が `.sysml`
-モデルを**テキストとしてではなく構造として**扱えるようになります — 解析・検証・要求
-一覧・ダイアグラム構造の取得をツールとして提供します。
+The extension bundles a **standalone MCP server** so AI like Claude can treat
+your `.sysml` model **as structure rather than text** — exposing tools for
+parsing, validation, requirement listing and diagram structure.
 
-**使う相手によって、やることは次の 2 つのどちらかです。**
+**Depending on which client you use, do one of these two things.**
 
-### ① VS Code の AI(Copilot / agent)から使う → 設定不要
+### ① Using VS Code's AI (Copilot / agent) → nothing to configure
 
-VS Code **1.101 以上**で本拡張をインストールしていれば、**何もする必要はありません**。
-拡張が MCP サーバを自動登録します。コマンドパレットで **「MCP: List Servers」** を開き、
-**「SysML v2 Studio」** が一覧にあれば有効です。
+If you have this extension installed on VS Code **1.101 or later**, there is
+**nothing to do**. The extension registers the MCP server automatically. Open
+**“MCP: List Servers”** from the Command Palette — if **“SysML v2 Studio”** is
+listed, it's active.
 
-### ② Claude Code / Claude Desktop から使う → 1 行で登録
+### ② Using Claude Code / Claude Desktop → one line to register
 
-**Claude Code**(VS Code とは別のクライアント)の場合、プロジェクトのルートで次を 1 回
-実行するだけです(`npx` なので事前インストール不要):
+For **Claude Code** (a client separate from VS Code), run this once at your
+project root (`npx`, so no prior install needed):
 
 ```bash
 claude mcp add sysml -- npx -y @engineer-fumi/sysml-v2-mcp "$(pwd)"
 ```
 
-**Claude Desktop** の場合は設定ファイルに次を追加します:
+For **Claude Desktop**, add this to the config file:
 
 ```jsonc
 { "mcpServers": { "sysml": {
   "command": "npx",
-  "args": ["-y", "@engineer-fumi/sysml-v2-mcp", "<モデルのフォルダの絶対パス>"]
+  "args": ["-y", "@engineer-fumi/sysml-v2-mcp", "<absolute path to your model folder>"]
 } } }
 ```
 
-提供ツール: `list_files` / `outline` / `validate` / `find_element` /
-`list_requirements` / `describe_diagram`。登録方法のバリエーション(パス指定・自前
-ビルド)・ツールの詳細・活用例は [Claude (MCP) 連携ガイド](docs/mcp.md) を参照。
+Tools provided: `list_files` / `outline` / `validate` / `find_element` /
+`list_requirements` / `describe_diagram`. For registration variants (explicit
+path, self-build), tool details and usage examples, see the
+[Claude (MCP) integration guide](docs/mcp.md).
 
-## 記法と図の対応
+## Notation ↔ diagram
 
-同じテキストモデルが、選んだ図の種類に応じて描き分けられます。以下は各図の**最小例と、
-その実際の描画結果**です(下の全体図ヒーロー画像も同じ仕組みで生成しています)。
+The same text model is rendered differently depending on the diagram kind you
+choose. Below is a **minimal example for each kind and its actual rendered
+result** (the hero overview image above is generated the same way).
 
-### ブロック定義図 (BDD) — 定義の構造・コンポジション・特化
+### Block definition diagram (BDD) — structure, composition, specialization of definitions
 
 ```sysml
 package Powertrain {
@@ -99,9 +109,9 @@ package Powertrain {
 }
 ```
 
-![ブロック定義図](docs/images/diagram-bdd.png)
+![Block definition diagram](docs/images/diagram-bdd.png)
 
-### 内部ブロック図 (IBD) — part 内部の接続(port / connect)
+### Internal block diagram (IBD) — connections inside a part (port / connect)
 
 ```sysml
 package Hydraulics {
@@ -116,14 +126,14 @@ package Hydraulics {
 }
 ```
 
-![内部ブロック図](docs/images/diagram-ibd.png)
+![Internal block diagram](docs/images/diagram-ibd.png)
 
-### 要求図 — 要求と satisfy 関係
+### Requirement diagram — requirements and satisfy relations
 
 ```sysml
 package Requirements {
   requirement def MassLimit {
-    doc /* 車両総質量は 1500 kg 以下であること */
+    doc /* 車両総質量は 1500 kg 以下であること */ // "Total vehicle mass shall be at most 1500 kg"
     attribute limit : Real = 1500.0;
   }
   requirement massReq : MassLimit;
@@ -132,9 +142,9 @@ package Requirements {
 }
 ```
 
-![要求図](docs/images/diagram-req.png)
+![Requirement diagram](docs/images/diagram-req.png)
 
-### ユースケース図 — ユースケースとアクター・perform
+### Use case diagram — use cases with actors and perform
 
 ```sysml
 package Robot {
@@ -146,9 +156,9 @@ package Robot {
 }
 ```
 
-![ユースケース図](docs/images/diagram-uc.png)
+![Use case diagram](docs/images/diagram-uc.png)
 
-### 状態遷移図 — 状態と transition(trigger 付き)
+### State transition diagram — states and transitions (with triggers)
 
 ```sysml
 package Machine {
@@ -164,9 +174,9 @@ package Machine {
 }
 ```
 
-![状態遷移図](docs/images/diagram-state.png)
+![State transition diagram](docs/images/diagram-state.png)
 
-### アクティビティ図 — アクションと succession / item flow
+### Activity diagram — actions with succession / item flow
 
 ```sysml
 package Process {
@@ -180,44 +190,48 @@ package Process {
 }
 ```
 
-![アクティビティ図](docs/images/diagram-action.png)
+![Activity diagram](docs/images/diagram-action.png)
 
-> 図の種類・編集操作・レイアウト保存の詳細は [ダイアグラム機能ガイド](docs/diagrams.md) を参照。
+> For diagram kinds, editing operations and layout persistence, see the
+> [diagram feature guide](docs/diagrams.md).
 
-## SysML v2 対応範囲
+## SysML v2 conformance
 
-本拡張は OMG SysML v2 テキスト記法の**実用サブセット**を実装しています(コード監査に
-基づく概要。詳細・根拠は [対応範囲 (conformance matrix)](docs/conformance.md) を参照)。
+This extension implements a **practical subset** of the OMG SysML v2 textual
+notation (overview based on a code audit; for details and evidence see the
+[conformance matrix](docs/conformance.md)).
 
-| 言語領域 | 対応レベル |
+| Language area | Level |
 |---|---|
 | Definitions & Usages (part / item / attribute / port / action / state …) | **Full** |
 | Specialization (`:>` / `:>>` / `specializes` / `subsets` / `redefines`) | **Full** |
-| Connections / Interfaces / Bindings / Flows | **Full**(構造) |
-| Requirements / Constraints / satisfy・verify | **Full**(構造)/ 式は不透明 |
+| Connections / Interfaces / Bindings / Flows | **Full** (structure) |
+| Requirements / Constraints / satisfy・verify | **Full** (structure) / expressions opaque |
 | Use Cases / Actors / include・perform | **Full** |
-| Metadata / Annotations (`@`, `#`, `metadata def`) | **Full**(パース) |
+| Metadata / Annotations (`@`, `#`, `metadata def`) | **Full** (parse) |
 | Comments / Documentation (`//`, `/* */`, `doc`, `comment`) | **Full** |
-| States & Transitions / Actions / Calc | **Partial**(trigger/guard/効果・制御フローは不透明) |
-| Views / Viewpoints / Rendering | **Partial**(レンダリング非実装) |
-| Imports / Aliases / Visibility | **Partial**(private/protected は非強制) |
-| Expressions(constraint / calc 本体・値) | **Parse-only**(不透明テキスト・型チェックなし) |
-| Standard Library | **最小サブセット同梱**(完全な OMG ライブラリではない) |
-| KerML 基盤層 (classifier / feature / function …) | **None** |
+| States & Transitions / Actions / Calc | **Partial** (trigger/guard/effect and control flow opaque) |
+| Views / Viewpoints / Rendering | **Partial** (rendering not implemented) |
+| Imports / Aliases / Visibility | **Partial** (private/protected not enforced) |
+| Expressions (constraint / calc bodies & values) | **Parse-only** (opaque text, no type checking) |
+| Standard Library | **minimal subset bundled** (not the full OMG library) |
+| KerML foundation layer (classifier / feature / function …) | **None** |
 
-> レベルの定義(Full / Partial / Parse-only / None)と各領域の根拠は
-> [conformance matrix](docs/conformance.md) に記載しています。
+> The level definitions (Full / Partial / Parse-only / None) and the evidence
+> for each area are documented in the [conformance matrix](docs/conformance.md).
 
-## ドキュメント
+## Documentation
 
-- [ダイアグラム機能の詳細](docs/diagrams.md) — 図の種類・編集操作・レイアウト保存
-- [対応記法と制限事項](docs/syntax.md) — サポートする SysML v2 サブセット
-- [対応範囲 (conformance matrix)](docs/conformance.md) — 言語領域 × 対応レベルの詳細表
-- [Claude (MCP) 連携ガイド](docs/mcp.md) — MCP サーバの登録・ツール・活用例
-- [開発ガイド](docs/development.md) — アーキテクチャ・ビルド・テスト・公開
+- [Diagram features](docs/diagrams.md) — diagram kinds, editing, layout persistence
+- [Supported notation & limitations](docs/syntax.md) — the SysML v2 subset supported
+- [Conformance matrix](docs/conformance.md) — detailed language area × level table
+- [Claude (MCP) integration guide](docs/mcp.md) — MCP server registration, tools, usage
+- [Development guide](docs/development.md) — architecture, build, test, publish
 
-## ライセンス
+> Documentation pages are currently written in Japanese.
 
-[MIT](LICENSE)。`samples/omg/` の OMG 公式サンプルは EPL-2.0
-([詳細](samples/omg/README.md))。同梱する第三者コンポーネント(React 等)は
-[THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt) を参照。
+## License
+
+[MIT](LICENSE). The official OMG samples under `samples/omg/` are EPL-2.0
+([details](samples/omg/README.md)). Bundled third-party components (React, etc.)
+are listed in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
