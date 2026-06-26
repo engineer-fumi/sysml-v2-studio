@@ -71,6 +71,23 @@ export type ElementKind =
   | "satisfy"
   | "ref"
   | "event"
+  // KerML foundation layer (definitions without a `def` keyword)
+  | "classifier"
+  | "feature"
+  | "function"
+  | "predicate"
+  | "datatype"
+  | "struct"
+  | "class"
+  | "metaclass"
+  | "behavior"
+  | "association"
+  | "connector"
+  | "interaction"
+  | "expr"
+  | "step"
+  | "multiplicity"
+  | "type"
   | "unknown";
 
 export interface ConnectionEnd {

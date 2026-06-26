@@ -206,7 +206,7 @@ package Process {
 | Imports / Aliases / Visibility | **Partial**(private/protected 未强制) |
 | Expressions(constraint / calc 主体与值) | **Parse-only**(不透明文本,无类型检查) |
 | Standard Library | **内置最小子集**(非完整的 OMG 库) |
-| KerML 基础层(classifier / feature / function …) | **None** |
+| KerML 基础层(classifier / feature / function …) | **Parse-only** |
 
 > 级别定义(Full / Partial / Parse-only / None)以及各领域的依据,
 > 记载于 [conformance matrix](docs/conformance.md)。

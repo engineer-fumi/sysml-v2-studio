@@ -111,6 +111,41 @@ test("recovers from a syntax error and keeps later members", () => {
   find(r.root, "Good"); // later, valid member still parsed
 });
 
+test("parses the KerML foundation layer (definitions, relationships, connectors)", () => {
+  const r = parseSysML(`package P {
+    classifier Bicycle specializes Vehicle;
+    abstract datatype Collection;
+    struct Body specializes Object;
+    behavior Manufacture;
+    composite feature carParts : CarPart[0..*] subsets massedThings;
+    function '==' specializes DataFunctions::'==' { in x : Boolean[0..1]; }
+    assoc all BinaryLink specializes Link {
+      end [1] feature source : Anything[0..*];
+    }
+    connector c from a to b;
+    binding [1] bind [0..*] base.edges = [0..*] be;
+    succession first start then done;
+    inv { notEmpty(x) implies isClosed }
+    subtype Bicycle specializes Vehicle;
+  }`);
+  assert.deepStrictEqual(r.errors, [], "KerML constructs parse without error");
+  assert.strictEqual(find(r.root, "Bicycle").kind, "classifier");
+  assert.strictEqual(find(r.root, "Body").kind, "struct");
+  assert.deepStrictEqual(find(r.root, "Bicycle").specializes, ["Vehicle"]);
+  assert.strictEqual(find(r.root, "Manufacture").kind, "behavior");
+  // a keyword used as a referenced name (`subsets massedThings`) still resolves;
+  // and the KerML kind keyword `feature` is recognised as a definition kind
+  assert.strictEqual(find(r.root, "carParts").kind, "feature");
+});
+
+test("keeps KerML keywords usable as referenced names", () => {
+  // the standard library references features literally called `step` / `type`
+  const r = parseSysML(`package P { feature f subsets step; feature g : type; }`);
+  assert.deepStrictEqual(r.errors, []);
+  assert.deepStrictEqual(find(r.root, "f").specializes, ["step"]);
+  assert.deepStrictEqual(find(r.root, "g").typedBy, ["type"]);
+});
+
 // ---- resolver -------------------------------------------------------------
 
 test("resolves qualified names and scope-local references", () => {

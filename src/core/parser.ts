@@ -17,12 +17,25 @@ const DEF_KINDS = new Set([
   "occurrence", "metadata", "calc", "case", "flow",
 ]);
 
+/**
+ * KerML foundation definition kinds. Unlike SysML `DEF_KINDS`, the keyword *is*
+ * the kind (there is no trailing `def`), e.g. `classifier C`, `feature f`,
+ * `function '=='`. `assoc` is normalized to `association`.
+ */
+const KERML_KINDS = new Set([
+  "classifier", "feature", "function", "predicate", "datatype", "struct",
+  "class", "metaclass", "behavior", "connector", "interaction", "expr",
+  "step", "multiplicity", "type", "association",
+]);
+
 /** Prefix modifiers that may precede an element declaration. */
 const PREFIX_MODIFIERS = new Set([
   "public", "private", "protected", "abstract", "variation", "readonly",
   "derived", "end", "individual", "snapshot", "timeslice", "variant",
   "standard", "default", "ordered", "non-unique", "nonunique", "parallel",
   "ref", "subject", "actor", "stakeholder", "frame",
+  // KerML feature/definition modifiers
+  "composite", "portion", "const", "var", "member",
 ]);
 
 const COMPOUND_USE_CASE = "use"; // "use case [def]"
@@ -158,6 +171,13 @@ class Parser {
     // prefix modifiers (including #metadata prefixes)
     for (;;) {
       const t = this.peek();
+      // KerML allows a connector/feature multiplicity before the kind keyword,
+      // e.g. `end [0..1] feature cart : …`. Consume it so the declaration parses
+      // (the value is carried by the feature's own trailing multiplicity).
+      if (t.type === "punct" && t.text === "[" && modifiers.length) {
+        this.parseMultiplicity();
+        continue;
+      }
       if (t.type === "punct" && t.text === "#") {
         this.next();
         const s = this.peek().start;
@@ -295,6 +315,37 @@ class Parser {
         case "render":
         case "language":
           return this.parseOpaqueStatement(startTok);
+        case "inv": {
+          // KerML invariant: `inv [name] { boolean-expression }` — the body is
+          // an expression, modeled like a constraint with opaque text.
+          this.next();
+          const el = createElement("constraint", startTok.start);
+          el.modifiers = [...modifiers, "inv"];
+          this.takePendingDoc(el);
+          if (this.atNameToken() && this.peek(1).text !== "(") this.parseIdentification(el);
+          if (this.at("{")) el.value = this.captureBracedBody();
+          this.eat(";");
+          el.end = this.prevEnd();
+          return el;
+        }
+        // Standalone KerML relationship elements (`subtype A specializes B;`,
+        // `specialization Gen subtype X :> Y;`, `disjoining D disjoint a from b;`,
+        // …). Captured as opaque so they parse without error; their semantics are
+        // already carried by the participating features' own specializations.
+        case "specialization":
+        case "subtype":
+        case "subset":
+        case "subclassifier":
+        case "redefinition":
+        case "conjugation":
+        case "disjoining":
+        case "featuring":
+        case "typing":
+        case "inverting":
+        case "unioning":
+        case "intersecting":
+        case "differencing":
+          return this.parseOpaqueStatement(startTok);
         case "def": {
           // `individual def X` – def preceded only by prefix modifiers
           this.next();
@@ -318,6 +369,12 @@ class Parser {
           this.recover();
           return undefined;
         }
+        case "assoc": {
+          // KerML association: `assoc [struct] [all] Name ...`
+          this.next();
+          this.eat("struct"); // `assoc struct` variant — modeled as an association
+          return this.parseDeclaration("association", modifiers, direction, startTok);
+        }
         default:
           if (DEF_KINDS.has(t.text)) {
             this.next();
@@ -325,6 +382,11 @@ class Parser {
             const kind = (isDef ? `${t.text} def` : t.text) as ElementKind;
             // `connection x connect a to b;` and plain `connection def`
             return this.parseDeclaration(kind, modifiers, direction, startTok);
+          }
+          if (KERML_KINDS.has(t.text)) {
+            // KerML definition: the keyword itself is the kind (no `def`).
+            this.next();
+            return this.parseDeclaration(t.text as ElementKind, modifiers, direction, startTok);
           }
           break;
       }
@@ -475,17 +537,30 @@ class Parser {
     this.next(); // bind | binding
     const el = createElement("bind", startTok.start);
     el.modifiers = modifiers;
-    // optional name part for `binding b bind x = y`
-    if (this.atIdentifier() && this.peek(1).text !== "=" && this.peek(1).text !== ".") {
+    // KerML allows a multiplicity on the binding connector itself: `binding [1] bind …`
+    if (this.at("[")) el.multiplicity = this.parseMultiplicity();
+    // optional name part for `binding b bind x = y` / `binding b : AB bind …`
+    if (
+      this.atIdentifier() &&
+      !["=", ".", "[", "::"].includes(this.peek(1).text)
+    ) {
       const t = this.next();
       el.name = unquoteName(t.text);
       el.nameStart = t.start;
       el.nameEnd = t.end;
+      if (this.eat(":")) {
+        el.typedBy.push(this.qnameRef(el, "type", false, true));
+        while (this.eat(",")) el.typedBy.push(this.qnameRef(el, "type", false, true));
+      }
     }
     this.eat("bind");
+    if (this.at("[")) this.parseMultiplicity(); // `bind [0..*] x = …`
     const a = this.qnameRef(el, "end", false, true);
     const ends: ConnectionEnd[] = [{ path: a }];
-    if (this.eat("=")) ends.push({ path: this.qnameRef(el, "end", false, true) });
+    if (this.eat("=")) {
+      if (this.at("[")) this.parseMultiplicity();
+      ends.push({ path: this.qnameRef(el, "end", false, true) });
+    }
     el.ends = ends;
     this.parseBodyOrSemi(el);
     return el;
@@ -639,7 +714,25 @@ class Parser {
       el.typedBy.push(this.qnameRef(el, "type", false, true));
       while (this.eat(",")) el.typedBy.push(this.qnameRef(el, "type", false, true));
     }
+    // KerML relationship clauses before `first`: `succession redefines p … first …`,
+    // `succession s [1] first …`
+    for (;;) {
+      if (this.eat(":>>") || this.eat("redefines")) {
+        el.redefines.push(this.qnameRef(el, "redefine", false, true));
+        continue;
+      }
+      if (this.eat(":>") || this.eat("specializes") || this.eat("subsets")) {
+        el.specializes.push(this.qnameRef(el, "specialize", false, true));
+        continue;
+      }
+      if (this.at("[")) {
+        el.multiplicity = this.parseMultiplicity();
+        continue;
+      }
+      break;
+    }
     if (kw.text === "first" || this.eat("first")) {
+      if (this.at("[")) this.parseMultiplicity(); // `first [n] source`
       el.transition.source = this.qnameRef(el, "end", false, true);
     }
     if (this.eat("accept")) {
@@ -669,6 +762,7 @@ class Parser {
       this.captureUntil(["then", ";", "{"]);
     }
     if (this.eat("then")) {
+      if (this.at("[")) this.parseMultiplicity(); // `then [n] target`
       el.transition.target = this.qnameRef(el, "end", false, true);
     }
     this.parseBodyOrSemi(el);
@@ -743,14 +837,35 @@ class Parser {
   private parseDeclarationTail(el: SysMLElement, kind: ElementKind, _startTok: Token): SysMLElement {
     el.kind = kind;
     this.takePendingDoc(el);
+    // KerML `[kind] all Name ...` — `all` quantifies the declared classifier/feature
+    if (this.at("all")) el.modifiers.push(this.next().text);
     this.parseIdentification(el);
 
     // relationships
     for (;;) {
-      if (this.eat(":") || this.eat("defined")) {
+      if (this.eat(":") || this.eat("defined") || this.eat("typed")) {
         this.eat("by");
         el.typedBy.push(this.qnameRef(el, "type", false, true));
         while (this.eat(",")) el.typedBy.push(this.qnameRef(el, "type", false, true));
+        continue;
+      }
+      // KerML `conjugates B` — conjugation specializes its target
+      if (this.eat("conjugates") || this.eat("conjugate")) {
+        el.specializes.push(this.qnameRef(el, "specialize", false, true));
+        continue;
+      }
+      // KerML feature relationships kept as parse-only (consumed, not resolved)
+      // so the standard library parses without spurious "unresolved" noise.
+      if (
+        this.eat("chains") || this.eat("crosses") || this.eat("featured") ||
+        this.eat("inverse") || this.eat("disjoint") || this.eat("unions") ||
+        this.eat("intersects") || this.eat("differences")
+      ) {
+        this.eat("by");   // `featured by`
+        this.eat("of");   // `inverse of`
+        this.eat("from"); // `disjoint from`
+        this.parseQualifiedName(false, true);
+        while (this.eat(",")) this.parseQualifiedName(false, true);
         continue;
       }
       if (this.eat(":>") || this.eat("specializes") || this.eat("subsets")) {
@@ -777,6 +892,18 @@ class Parser {
         continue;
       }
       break;
+    }
+
+    // KerML connector ends: `connector c from a to b;` / `… from [1] self to [*] x`
+    if (this.at("from")) {
+      this.next();
+      if (this.at("[")) this.parseMultiplicity();
+      const ends: ConnectionEnd[] = [{ path: this.qnameRef(el, "end", false, true) }];
+      while (this.eat("to") || this.eat(",")) {
+        if (this.at("[")) this.parseMultiplicity();
+        ends.push({ path: this.qnameRef(el, "end", false, true) });
+      }
+      el.ends = ends;
     }
 
     // `connection c : Type connect a to b` (after name / typing / multiplicity)
@@ -856,6 +983,18 @@ class Parser {
     el.end = this.prevEnd();
   }
 
+  /**
+   * In a name/reference position a KerML keyword may actually be the *name* of a
+   * referenced feature (the standard library has features literally called
+   * `step`, `feature`, `type`, …). Treat those keywords as identifiers here so
+   * references like `subsets step` resolve instead of erroring.
+   */
+  private atNameToken(offset = 0): boolean {
+    const t = this.peek(offset);
+    if (t.type === "identifier") return true;
+    return t.type === "keyword" && KERML_KINDS.has(t.text);
+  }
+
   /** A::B::C  (optionally ending with ::* for imports, optionally with dots) */
   private parseQualifiedName(allowStar = false, allowDots = false): string {
     // conjugated type reference: ~PortType
@@ -865,7 +1004,7 @@ class Parser {
       prefix = "~";
     }
     const parts: string[] = [];
-    if (!this.atIdentifier()) {
+    if (!this.atNameToken()) {
       const t = this.peek();
       this.error("名前が必要です", t.start, t.end);
       return "";
@@ -880,14 +1019,14 @@ class Parser {
           // allow ::** recursive import
           continue;
         }
-        if (this.atIdentifier()) {
+        if (this.atNameToken()) {
           parts.push(unquoteName(this.next().text));
           continue;
         }
         this.pos = save;
         break;
       }
-      if (allowDots && this.at(".") && this.peek(1).type === "identifier") {
+      if (allowDots && this.at(".") && this.atNameToken(1)) {
         this.next();
         parts.push("." + unquoteName(this.next().text));
         continue;
