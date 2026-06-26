@@ -205,7 +205,7 @@ package Process {
 | Imports / Aliases / Visibility | **Partial**(private/protected は非強制) |
 | Expressions(constraint / calc 本体・値) | **Parse-only**(不透明テキスト・型チェックなし) |
 | Standard Library | **最小サブセット同梱**(完全な OMG ライブラリではない) |
-| KerML 基盤層 (classifier / feature / function …) | **None** |
+| KerML 基盤層 (classifier / feature / function …) | **Parse-only** |
 
 > レベルの定義(Full / Partial / Parse-only / None)と各領域の根拠は
 > [conformance matrix](docs/conformance.md) に記載しています。

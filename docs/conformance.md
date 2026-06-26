@@ -1,6 +1,6 @@
 # OMG SysML v2 対応範囲 (conformance matrix)
 
-> 対象バージョン: **v0.6.0** / 最終更新: **2026-06-26**
+> 対象バージョン: **v0.7.1** / 最終更新: **2026-06-27**
 
 本拡張は OMG SysML v2 テキスト記法の**実用サブセット**を実装しています。この
 ページは「どの言語領域を、どこまで扱えるか」をコードに基づいて棚卸ししたものです。
@@ -37,7 +37,7 @@
 | Imports / Aliases / Visibility (public / private) | **Partial**(可視性は近似) | `parser.ts` `parseImport`/`parseAlias`、`resolve.ts`(private/protected 非強制) |
 | Comments / Documentation (`//`, `/* */`, `doc`, `comment`) | **Full** | `lexer.ts`、`parser.ts` `parseDoc`/`parseComment` |
 | Standard Library | **最小サブセット同梱** | `stdlib.ts` `STDLIB_FILES`(完全な OMG ライブラリではない) |
-| KerML 基盤層 (classifier / feature / datatype / function / predicate …) | **None** | キーワード未登録(`lexer.ts` `KEYWORDS`)、専用パースなし |
+| KerML 基盤層 (classifier / feature / datatype / function / predicate …) | **Parse-only** | `lexer.ts` `KEYWORDS`(KerML 語彙)、`parser.ts` `KERML_KINDS` + 関係節・コネクタ。意味検証・可視化は未対応 |
 
 ---
 
@@ -167,12 +167,24 @@ import で解決し、F12 で同梱ライブラリへジャンプできます。
 ライブラリではありません** — 関数パッケージ(`BaseFunctions` / `NumericalFunctions`
 等)は import 解決用の空パッケージとして存在するだけです。
 
-### KerML 基盤層 — None
+### KerML 基盤層 — Parse-only
 
 `classifier` / `feature` / `datatype` / `class` / `struct` / `function` /
-`predicate` / `metaclass` / `behavior` などの KerML 固有レベルの構文はキーワード
-登録(`lexer.ts` `KEYWORDS`)も専用パースもありません。これらを含むモデルはエラー
-回復で読み飛ばされます。
+`predicate` / `metaclass` / `behavior` / `assoc[iation]` / `connector` /
+`interaction` / `expr` / `step` / `multiplicity` / `type` などの KerML 定義キーワード
+(`lexer.ts` `KEYWORDS` / `parser.ts` `KERML_KINDS`)と、その関係節
+(`specializes` / `subsets` / `redefines` / `conjugates` / `typed by` /
+`chains` / `crosses` / `disjoint from` / `unions` / `intersects` …)、コネクタ
+(`binding`/`connector`/`succession` の `from … to …` / `first … then …` / 多重度)、
+`inv` 不変条件、スタンドアロン関係要素(`subtype` / `specialization` / `redefinition` …)
+を**パース**します。
+
+- **限界**: ここは**構文受理(parse-only)**で、KerML 固有レベルの意味検証・型推論・
+  可視化は行いません。また OMG 公式コーパスでカバレッジを実測していますが、式レベル
+  (`->` / `?` 等の演算子)や一部のコネクタ端記法など**未対応の構文も残っています**。
+- KerML 語彙を予約語化したため、`step` / `feature` / `type` のように KerML キーワードと
+  同名の標準ライブラリ要素も**参照名としては識別子扱い**で解決します
+  (`parser.ts` `atNameToken`)。
 
 ---
 
@@ -184,7 +196,8 @@ import で解決し、F12 で同梱ライブラリへジャンプできます。
   テキストとして読み飛ばす。
 - **標準ライブラリは最小サブセット** — 完全な OMG ライブラリではない。
 - **図のリネームは宣言名のみ** — 参照箇所は追従しない。
-- **KerML 基盤層は未対応**。
+- **KerML 基盤層は parse-only** — 定義・関係・コネクタ・`inv` を構文受理するが、
+  意味検証・可視化は未対応。式レベルや一部記法に未対応の構文が残る。
 
 ## 関連
 

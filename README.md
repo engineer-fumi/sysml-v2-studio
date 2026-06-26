@@ -215,7 +215,7 @@ notation (overview based on a code audit; for details and evidence see the
 | Imports / Aliases / Visibility | **Partial** (private/protected not enforced) |
 | Expressions (constraint / calc bodies & values) | **Parse-only** (opaque text, no type checking) |
 | Standard Library | **minimal subset bundled** (not the full OMG library) |
-| KerML foundation layer (classifier / feature / function …) | **None** |
+| KerML foundation layer (classifier / feature / function …) | **Parse-only** |
 
 > The level definitions (Full / Partial / Parse-only / None) and the evidence
 > for each area are documented in the [conformance matrix](docs/conformance.md).

@@ -8,6 +8,20 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **KerML foundation layer now parses** — the parser recognises KerML definition
+  keywords (`classifier` / `feature` / `function` / `predicate` / `datatype` /
+  `struct` / `class` / `metaclass` / `behavior` / `assoc[iation]` / `connector` /
+  `interaction` / `expr` / `step` / `multiplicity` / `type`), their relationship
+  clauses (`conjugates` / `typed by` / `chains` / `crosses` / `disjoint from` /
+  `unions` / `intersects` …), KerML connectors (`binding`/`connector`/`succession`
+  with multiplicities and `from … to …` / `first … then …`), `inv` invariants and
+  standalone relationship elements. Measured against the official OMG corpus, parse
+  errors dropped ~82% on the KerML examples and the full standard library. KerML
+  moves from **None** to **Parse-only** in the [conformance matrix](docs/conformance.md).
+  KerML keywords that are also library element names (`step` / `feature` / `type`)
+  still resolve as references. First step of an initiative to track the official
+  OMG grammar; semantic validation / visualization of the KerML layer is future work.
+
 - **GitHub Releases are automated** — pushing a `v<version>` tag now also creates
   (or updates) a GitHub Release, using the matching `CHANGELOG.md` section as the
   notes (`github-release.yml`). Needs no secrets and no approval gate.

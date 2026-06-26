@@ -36,6 +36,18 @@ export const KEYWORDS = new Set([
   "timeslice", "to", "transition", "until", "use", "variant", "variation",
   "verification", "verify", "via", "view", "viewpoint", "when", "while", "xor",
   "true", "false",
+  // KerML foundation layer (definitions, relationships and modifiers used by the
+  // standard library and KerML models). Kept here so the SysML subset above stays
+  // legible while the parser can still track the official OMG KerML grammar.
+  "classifier", "feature", "function", "predicate", "datatype", "struct",
+  "class", "metaclass", "behavior", "assoc", "association", "connector",
+  "interaction", "expr", "step", "multiplicity", "type", "specialization",
+  "conjugation", "conjugates", "conjugate", "subclassifier", "subtype",
+  "subset", "redefinition", "disjoining", "disjoint", "unioning", "unions",
+  "intersecting", "intersects", "differencing", "differences", "featuring",
+  "featured", "typing", "typed", "inverting", "inverse", "chains", "crosses",
+  "const", "portion", "var", "meta", "member", "inv", "succ", "bindings",
+  "composite",
 ]);
 
 const PUNCT2 = [":>>", "::>", "..", "::", ":>", ":=", "==", "!=", "<=", ">=", "->", "=>", "**"];
