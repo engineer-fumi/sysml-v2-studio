@@ -6,12 +6,20 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.1] — 2026-06-26
+
+Documentation and release-infrastructure release; no change to extension behavior.
+
 ### Added
 
 - **Multilingual README** — the README is now available in English (default
   `README.md`), Japanese (`README.ja.md`) and Simplified Chinese
   (`README.zh-Hans.md`), with a language switcher at the top of each. English is
   the Marketplace/GitHub default.
+- **Automated releases** — pushing a `v<version>` tag now publishes the extension
+  to the VS Code Marketplace and Open VSX (`publish-extension.yml`, gated behind a
+  protected `release` environment) and the npm MCP package via OIDC
+  (`publish-mcp.yml`). One version bump + one tag ships everything.
 
 ### Changed
 
@@ -20,13 +28,6 @@ project adheres to [Semantic Versioning](https://semver.org/).
   each diagram kind beside the exact source snippet that renders it (taken from
   the screenshot generator, so code and image always match). Added Marketplace /
   npm / license badges.
-
-### Added
-
-- **Automated releases** — pushing a `v<version>` tag now publishes the extension
-  to the VS Code Marketplace and Open VSX (`publish-extension.yml`, gated behind a
-  protected `release` environment) and the npm MCP package via OIDC
-  (`publish-mcp.yml`). One version bump + one tag ships everything.
 
 ## [0.7.0] — 2026-06-26
 
@@ -107,7 +108,8 @@ support plus an interactive, editable diagram view.
   expression bodies are treated as opaque text and not type-checked.
 - Name resolution is an approximation (visibility is not fully enforced).
 
-[Unreleased]: https://github.com/engineer-fumi/sysml-v2-studio/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/engineer-fumi/sysml-v2-studio/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/engineer-fumi/sysml-v2-studio/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/engineer-fumi/sysml-v2-studio/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/engineer-fumi/sysml-v2-studio/releases/tag/v0.6.0
 [0.5.0]: https://github.com/engineer-fumi/sysml-v2-studio/releases/tag/v0.5.0

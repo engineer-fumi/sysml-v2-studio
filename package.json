@@ -2,7 +2,7 @@
   "name": "sysml-v2-studio",
   "displayName": "SysML v2 Studio",
   "description": "SysML v2 (.sysml / .kerml) のオーサリング・可視化・編集: 言語サポート・8種の編集可能なダイアグラム・Claude (MCP) 連携",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "publisher": "engineer-fumi",
   "license": "MIT",
   "icon": "media/icon.png",

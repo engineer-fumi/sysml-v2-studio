@@ -143,7 +143,8 @@ Publishing(OIDC)** で公開し、npm トークンは保存しません
 (`.github/workflows/publish-mcp.yml`)。
 
 1. ルート `package.json` の `version` を上げて main にマージ。
-2. タグ `mcp-v<version>`(例 `mcp-v0.7.0`)を push、または Actions から手動実行。
+2. タグ `v<version>`(例 `v0.7.1`)を push、または Actions から手動実行。これは拡張の
+   公開(`publish-extension.yml`)と共通のタグで、1 本で両方が走ります。
 3. ワークフローが build → smoke → `npm publish ./dist/npm --access public --provenance`
    を OIDC 認証で実行(短期・署名付きトークン。`--provenance` で来歴も添付)。
 
