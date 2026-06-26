@@ -26,9 +26,10 @@ jobs:
       id-token: write # required for OIDC trusted publishing + provenance
     steps:
       - uses: actions/checkout@v6
-      # setup-node@v6 is OIDC-aware: it does NOT inject a dummy NODE_AUTH_TOKEN /
-      # _authToken into .npmrc, so npm performs the OIDC trusted-publishing
-      # handshake instead of falling back to an empty token. Older v4 broke this.
+      # Pinned to match npm's official trusted-publishing example. The publish
+      # actually started working once the trusted publisher was saved on npmjs.com
+      # (it had silently failed to save while 2FA was unconfigured), so the OIDC
+      # token exchange was being rejected and npm fell back to an empty token (404).
       - uses: actions/setup-node@v6
         with:
           # Trusted publishing requires Node >= 22.14.0 (and npm >= 11.5.1)
