@@ -6,6 +6,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **README overhaul** — installation, the diagram preview quick-start and the
+  Claude (MCP) setup are now near the top, and a new "記法と図の対応" gallery shows
+  each diagram kind beside the exact source snippet that renders it (taken from
+  the screenshot generator, so code and image always match). Added Marketplace /
+  npm / license badges.
+
 ### Added
 
 - **Automated releases** — pushing a `v<version>` tag now publishes the extension
