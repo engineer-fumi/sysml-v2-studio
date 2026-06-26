@@ -25,23 +25,23 @@ jobs:
       contents: read
       id-token: write # required for OIDC trusted publishing + provenance
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      # Pinned to match npm's official trusted-publishing example. The publish
+      # actually started working once the trusted publisher was saved on npmjs.com
+      # (it had silently failed to save while 2FA was unconfigured), so the OIDC
+      # token exchange was being rejected and npm fell back to an empty token (404).
+      - uses: actions/setup-node@v6
         with:
-          # Trusted publishing requires Node >= 22.14.0 (and npm >= 11.5.1);
-          # Node 20 silently skips OIDC registry auth and the publish 404s.
-          node-version: 24
+          # Trusted publishing requires Node >= 22.14.0 (and npm >= 11.5.1)
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
-          cache: npm
+          package-manager-cache: false
       - run: npm ci
-      # ensure npm >= 11.5.1 for trusted publishing
-      - name: Update npm
-        run: npm install -g npm@latest
       - name: Build MCP package + smoke test
         run: |
           npm run build:mcp:pkg
           node scripts/smoke-mcp.mjs
       - name: Publish to npm (Trusted Publishing / OIDC)
         # No NODE_AUTH_TOKEN: npm detects the GitHub OIDC environment and uses it,
-        # and auto-generates a provenance attestation (no --provenance flag needed).
+        # and auto-generates a provenance attestation.
         run: npm publish ./dist/npm --access public
