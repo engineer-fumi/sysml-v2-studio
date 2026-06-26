@@ -8,10 +8,21 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Zero-config MCP for VS Code users** — on VS Code 1.101+ the extension
+  registers the bundled MCP server automatically via the native
+  `lm.registerMcpServerDefinitionProvider` API (one server per workspace folder).
+  No manual config needed; see it under *MCP: List Servers*.
 - **Standalone MCP npm package** — `@engineer-fumi/sysml-v2-mcp` so non–VS Code
   clients register with one line: `npx -y @engineer-fumi/sysml-v2-mcp <dir>`.
   Built from the bundled server via `npm run build:mcp:pkg` (version synced from
   the extension), with a stdio smoke test (`npm run smoke:mcp`) wired into CI.
+
+### Changed
+
+- **Minimum VS Code raised to 1.101** (`engines.vscode ^1.101.0`) — required by
+  the finalized native MCP server definition provider API.
+- MCP registration docs ([docs/mcp.md](docs/mcp.md)) reorganized around
+  auto-registration (VS Code) / npx (other clients) / path / local-build.
 
 ## [0.6.0] — 2026-06-25
 

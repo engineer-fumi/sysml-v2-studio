@@ -40,10 +40,30 @@ Claude Desktop / Claude Code
 
 ## 登録方法
 
-登録方法は 3 通り。**おすすめは npx(方法 A)** — OS・エディタ・拡張のインストール先に
-依存せず、コピペ 1 行で完結します。
+| 利用形態 | 推奨方法 |
+|---|---|
+| **VS Code に拡張を入れている**(1.101 以上) | **方法 0: 自動登録(設定ゼロ)** |
+| Claude Desktop / Claude Code など VS Code 以外 | 方法 A: npx(推奨) |
+| 拡張あり・手元の `dist/mcp.cjs` を指したい | 方法 B: パス指定(フォールバック) |
+| リポジトリから自前ビルド | 方法 C: ローカルビルド |
 
-### 方法 A: npx(推奨・ゼロインストール)
+### 方法 0: VS Code 拡張ユーザーは自動登録(設定ゼロ)
+
+**VS Code 1.101 以上**で本拡張をインストールしている場合、追加設定は不要です。拡張が
+VS Code のネイティブ MCP API(`lm.registerMcpServerDefinitionProvider`、1.101 で
+finalized)を使い、同梱の `dist/mcp.cjs` を **MCP サーバとして自動登録**します。
+
+- ワークスペースフォルダごとに 1 つのサーバを公開し、そのフォルダをワークスペース
+  ルートとして走査します(マルチルート対応)。サーバは VS Code 同梱の Node.js
+  (`process.execPath`)で起動するため、`node` が PATH に無くても動作します。
+- VS Code の Copilot / エージェント(MCP クライアント)から `sysml` のツール群が
+  そのまま見えます。サーバ一覧は **コマンドパレット → "MCP: List Servers"** で確認できます。
+- **要件**: `engines.vscode` を `^1.101.0` に設定済み。1.100 以下の VS Code では拡張を
+  インストールできないため、その場合は下記 npx / パス指定をご利用ください。
+- VS Code 以外のクライアント(Claude Desktop 等)はこの自動登録の対象外なので、
+  方法 A(npx)を使ってください。
+
+### 方法 A: npx(VS Code 以外で推奨・ゼロインストール)
 
 npm に公開された [`@engineer-fumi/sysml-v2-mcp`](https://www.npmjs.com/package/@engineer-fumi/sysml-v2-mcp)
 を直接起動します。事前インストール不要、パス探し不要です。
