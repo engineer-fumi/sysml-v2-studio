@@ -6,6 +6,12 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **GitHub Releases are automated** — pushing a `v<version>` tag now also creates
+  (or updates) a GitHub Release, using the matching `CHANGELOG.md` section as the
+  notes (`github-release.yml`). Needs no secrets and no approval gate.
+
 ## [0.7.1] — 2026-06-26
 
 Documentation and release-infrastructure release; no change to extension behavior.

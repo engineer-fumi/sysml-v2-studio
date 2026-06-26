@@ -1,0 +1,78 @@
+name: GitHub Release
+
+# Creates (or updates) a GitHub Release when a `v*` tag is pushed, using the
+# matching section of CHANGELOG.md as the release notes. This documents the tag;
+# the actual artifacts ship from publish-extension.yml (Marketplace / Open VSX)
+# and publish-mcp.yml (npm) on the same tag.
+#
+# Needs no secrets — the built-in GITHUB_TOKEN with `contents: write` is enough,
+# so there is no protected-environment approval gate here. Re-running on the same
+# tag updates the existing release rather than failing.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to (re)build the release for, e.g. v0.7.1"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Build release notes from CHANGELOG
+        id: notes
+        env:
+          TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+          # Extract the section under "## [<version>]" up to the next "## [" header.
+          awk -v ver="$version" '
+            $0 ~ ("^## \\[" ver "\\]") { f=1; next }
+            f && /^## \[/ { exit }
+            f { print }
+          ' CHANGELOG.md > notes.md
+
+          if [ ! -s notes.md ]; then
+            echo "No CHANGELOG section for $version; falling back to auto-generated notes."
+            echo "auto=true" >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo ""
+              echo "---"
+              echo ""
+              echo "- 📦 VS Code Marketplace: https://marketplace.visualstudio.com/items?itemName=engineer-fumi.sysml-v2-studio"
+              echo "- 📦 MCP on npm: https://www.npmjs.com/package/@engineer-fumi/sysml-v2-mcp/v/$version"
+              echo "- 📝 Full changelog: https://github.com/${GITHUB_REPOSITORY}/blob/$TAG/CHANGELOG.md"
+            } >> notes.md
+            echo "auto=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.notes.outputs.tag }}
+          AUTO: ${{ steps.notes.outputs.auto }}
+        run: |
+          set -euo pipefail
+          if [ "$AUTO" = "true" ]; then
+            notes_args=(--generate-notes)
+          else
+            notes_args=(--notes-file notes.md)
+          fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "$TAG" "${notes_args[@]}"
+          else
+            gh release create "$TAG" --title "$TAG" --verify-tag "${notes_args[@]}"
+          fi
