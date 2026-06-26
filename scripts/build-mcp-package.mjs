@@ -46,12 +46,14 @@ const pkg = {
     "Standalone MCP (Model Context Protocol) server for SysML v2 (.sysml / .kerml) — parse, validate, outline, requirements and diagram structure over stdio. Companion to the SysML v2 Studio VS Code extension.",
   keywords: ["sysml", "sysml-v2", "kerml", "mbse", "mcp", "model-context-protocol", "claude"],
   homepage: "https://github.com/engineer-fumi/sysml-v2-studio#readme",
-  repository: { type: "git", url: "https://github.com/engineer-fumi/sysml-v2-studio" },
+  repository: { type: "git", url: "git+https://github.com/engineer-fumi/sysml-v2-studio.git" },
   bugs: { url: "https://github.com/engineer-fumi/sysml-v2-studio/issues" },
   license: rootPkg.license,
   author: rootPkg.publisher,
   type: "commonjs",
-  bin: { "sysml-v2-mcp": "./mcp.cjs" },
+  // bare filename (no "./"): npm's metadata normalizer drops a "./"-prefixed bin
+  // from the registry packument with a warning, even though the tarball keeps it
+  bin: { "sysml-v2-mcp": "mcp.cjs" },
   files: ["mcp.cjs", "README.md", "LICENSE"],
   engines: { node: ">=18" },
 };
@@ -112,4 +114,4 @@ MIT — see [LICENSE](./LICENSE).
 fs.writeFileSync(path.join(outDir, "README.md"), readme);
 
 console.log(`[mcp-pkg] built ${PKG_NAME}@${pkg.version} -> ${path.relative(root, outDir)}`);
-console.log("[mcp-pkg] publish with:  npm publish dist/npm --access public");
+console.log("[mcp-pkg] publish with:  npm publish ./dist/npm --access public");
