@@ -6,6 +6,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-06-26
+
 ### Added
 
 - **Zero-config MCP for VS Code users** — on VS Code 1.101+ the extension
@@ -26,6 +28,9 @@ project adheres to [Semantic Versioning](https://semver.org/).
   the finalized native MCP server definition provider API.
 - MCP registration docs ([docs/mcp.md](docs/mcp.md)) reorganized around
   auto-registration (VS Code) / npx (other clients) / path / local-build.
+- **Clearer MCP setup in the README** — the integration section is now split into
+  two unambiguous cases (① VS Code AI → nothing to do, ② Claude Code / Desktop →
+  one line) so users immediately see which step applies to them.
 
 ## [0.6.0] — 2026-06-25
 
@@ -80,6 +85,7 @@ support plus an interactive, editable diagram view.
   expression bodies are treated as opaque text and not type-checked.
 - Name resolution is an approximation (visibility is not fully enforced).
 
-[Unreleased]: https://github.com/engineer-fumi/sysml-v2-studio/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/engineer-fumi/sysml-v2-studio/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/engineer-fumi/sysml-v2-studio/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/engineer-fumi/sysml-v2-studio/releases/tag/v0.6.0
 [0.5.0]: https://github.com/engineer-fumi/sysml-v2-studio/releases/tag/v0.5.0
