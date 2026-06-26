@@ -1,0 +1,50 @@
+THIRD-PARTY SOFTWARE NOTICES AND INFORMATION
+============================================
+
+SysML v2 Studio is licensed under the MIT License (see LICENSE).
+
+The distributed extension bundles the following third-party components into
+dist/webview.js. Each is licensed under the MIT License and its copyright
+notice is reproduced below, as required.
+
+  - react        18.3.1   (https://react.dev)
+  - react-dom    18.3.1   (https://react.dev)
+  - scheduler    0.23.2   (https://www.npmjs.com/package/scheduler)
+
+The extension host bundle (dist/extension.js) and the MCP server bundle
+(dist/mcp.cjs) contain only first-party code plus Node.js built-ins and the
+VS Code API (provided by the host); they bundle no third-party libraries.
+
+Build- and test-only dependencies (TypeScript, esbuild, Playwright,
+@vscode/vsce, vscode-extension-tester, jsdom, type definitions, …) are not
+distributed with the extension and are therefore not listed here.
+
+The OMG official SysML v2 example models under samples/omg/ are licensed
+separately under the Eclipse Public License v2.0 and are NOT included in the
+published extension package. See samples/omg/README.md.
+
+--------------------------------------------------------------------------------
+react, react-dom, scheduler
+--------------------------------------------------------------------------------
+
+MIT License
+
+Copyright (c) Facebook, Inc. and its affiliates.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

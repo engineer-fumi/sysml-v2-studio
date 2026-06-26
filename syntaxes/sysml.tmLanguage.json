@@ -1,0 +1,113 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "SysML v2",
+  "scopeName": "source.sysml",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#quoted-names" },
+    { "include": "#numbers" },
+    { "include": "#definitions" },
+    { "include": "#keywords" },
+    { "include": "#operators" },
+    { "include": "#identifiers" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.sysml",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.documentation.sysml",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "strings": {
+      "name": "string.quoted.double.sysml",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        { "name": "constant.character.escape.sysml", "match": "\\\\." }
+      ]
+    },
+    "quoted-names": {
+      "name": "entity.name.tag.sysml",
+      "begin": "'",
+      "end": "'",
+      "patterns": [
+        { "name": "constant.character.escape.sysml", "match": "\\\\." }
+      ]
+    },
+    "numbers": {
+      "name": "constant.numeric.sysml",
+      "match": "\\b\\d[\\d_]*(\\.\\d+)?([eE][+-]?\\d+)?\\b"
+    },
+    "definitions": {
+      "patterns": [
+        {
+          "comment": "definition with name: part def Engine / use case def X",
+          "match": "\\b(package|library\\s+package|part|attribute|port|item|action|state|requirement|constraint|interface|connection|allocation|analysis|verification|concern|view|viewpoint|rendering|enum|occurrence|metadata|calc|case|flow|use\\s+case)\\s+(def\\s+)?(<\\s*[A-Za-z_][A-Za-z0-9_]*\\s*>\\s*)?([A-Za-z_][A-Za-z0-9_]*|'[^']*')",
+          "captures": {
+            "1": { "name": "storage.type.sysml" },
+            "2": { "name": "storage.type.def.sysml" },
+            "3": { "name": "entity.name.tag.short.sysml" },
+            "4": { "name": "entity.name.type.sysml" }
+          }
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "storage.type.sysml",
+          "match": "\\b(package|namespace|part|attribute|port|item|action|state|requirement|constraint|interface|connection|allocation|analysis|verification|concern|view|viewpoint|rendering|enum|occurrence|metadata|calc|case|flow|def|library|use)\\b"
+        },
+        {
+          "name": "storage.modifier.sysml",
+          "match": "\\b(abstract|variation|variant|readonly|derived|end|individual|snapshot|timeslice|ref|in|out|inout|public|private|protected|standard|default|ordered|nonunique|parallel|subject|objective|actor|stakeholder|frame)\\b"
+        },
+        {
+          "name": "keyword.control.sysml",
+          "match": "\\b(if|else|then|when|while|until|loop|for|first|accept|send|assign|do|entry|exit|transition|succession|merge|decide|fork|join|return|terminate|from|to|via|of|about|by|at|after|as)\\b"
+        },
+        {
+          "name": "keyword.other.sysml",
+          "match": "\\b(import|alias|expose|filter|specializes|subsets|redefines|references|defined|connect|bind|binding|perform|exhibit|satisfy|verify|allocate|include|assert|assume|require|doc|comment|rep|language|event|dependency|message|all|istype|hastype)\\b"
+        },
+        {
+          "name": "keyword.operator.logical.sysml",
+          "match": "\\b(and|or|not|xor|implies)\\b"
+        },
+        {
+          "name": "constant.language.sysml",
+          "match": "\\b(true|false|null)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.relationship.sysml",
+          "match": ":>>|::>|:>|::|:=|\\.\\."
+        },
+        {
+          "name": "keyword.operator.sysml",
+          "match": "==|!=|<=|>=|->|=>|\\*\\*|[=+\\-*/<>%^~]"
+        }
+      ]
+    },
+    "identifiers": {
+      "patterns": [
+        {
+          "comment": "type reference after : or :> etc is matched contextually above; plain identifiers",
+          "name": "variable.other.sysml",
+          "match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b"
+        }
+      ]
+    }
+  }
+}

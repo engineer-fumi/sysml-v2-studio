@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.local
+.DS_Store
+out/
+*.vsix
+.vscode-test/
+tmp/
+test-results/
+playwright-report/
+.test-extensions/
+test-resources/
+.sysml-layout.json

@@ -1,0 +1,191 @@
+{
+  "name": "sysml-v2-studio",
+  "displayName": "SysML v2 Studio",
+  "description": "SysML v2 (.sysml / .kerml) のオーサリング・可視化・編集: 言語サポート・8種の編集可能なダイアグラム・Claude (MCP) 連携",
+  "version": "0.6.0",
+  "publisher": "engineer-fumi",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#14141f",
+    "theme": "dark"
+  },
+  "pricing": "Free",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/engineer-fumi/sysml-v2-studio"
+  },
+  "homepage": "https://github.com/engineer-fumi/sysml-v2-studio#readme",
+  "bugs": {
+    "url": "https://github.com/engineer-fumi/sysml-v2-studio/issues"
+  },
+  "qna": false,
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Visualization"
+  ],
+  "keywords": [
+    "sysml",
+    "sysml-v2",
+    "kerml",
+    "mbse",
+    "modeling"
+  ],
+  "main": "./dist/extension.js",
+  "bin": {
+    "sysml-v2-mcp": "./dist/mcp.cjs"
+  },
+  "activationEvents": [
+    "onLanguage:sysml"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "sysml",
+        "aliases": [
+          "SysML v2",
+          "sysml"
+        ],
+        "extensions": [
+          ".sysml",
+          ".kerml"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "sysml",
+        "scopeName": "source.sysml",
+        "path": "./syntaxes/sysml.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "sysml.openDiagram",
+        "title": "SysML: ダイアグラムを開く",
+        "icon": "$(type-hierarchy-sub)"
+      },
+      {
+        "command": "sysml.openDiagramAs",
+        "title": "SysML: 図の種類を選んで開く",
+        "icon": "$(type-hierarchy)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "sysml.openDiagram",
+          "when": "editorLangId == sysml",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "sysml.openDiagram"
+        },
+        {
+          "command": "sysml.openDiagramAs"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "SysML v2 Studio",
+      "properties": {
+        "sysml.validation.unresolvedReferences": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "information",
+            "off"
+          ],
+          "default": "warning",
+          "description": "未解決の参照 (型・特化・接続先など) の診断レベル"
+        },
+        "sysml.validation.duplicateNames": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "information",
+            "off"
+          ],
+          "default": "error",
+          "description": "同一スコープ内の重複名の診断レベル"
+        },
+        "sysml.validation.typeConformance": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "information",
+            "off"
+          ],
+          "default": "warning",
+          "description": "型付け・特化の種類整合 (part は part def で型付け 等) の診断レベル"
+        },
+        "sysml.validation.shadowing": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "information",
+            "off"
+          ],
+          "default": "warning",
+          "description": "継承メンバーを同名宣言で隠している場合 (:>> による再定義を推奨) の診断レベル"
+        },
+        "sysml.validation.importVisibility": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "information",
+            "off"
+          ],
+          "default": "warning",
+          "description": "import の可視性 (public / private) が明示されていない場合の診断レベル"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "check": "tsc -p tsconfig.extension.json --noEmit && tsc -p tsconfig.webview.json --noEmit",
+    "build": "npm run check && node esbuild.mjs",
+    "build:mcp": "esbuild src/mcp/server.ts --bundle --platform=node --format=cjs --banner:js=\"#!/usr/bin/env node\" --outfile=dist/mcp.cjs --log-level=error",
+    "test:mcp": "esbuild test/mcp.ts --bundle --platform=node --outfile=dist/mcp-test.cjs --log-level=error && node dist/mcp-test.cjs",
+    "watch": "node esbuild.mjs --watch",
+    "test:core": "esbuild test/core.ts --bundle --platform=node --outfile=dist/core-test.cjs --log-level=error && node dist/core-test.cjs",
+    "test:geometry": "esbuild test/geometry.ts --bundle --platform=node --outfile=dist/geometry-test.cjs --log-level=error && node dist/geometry-test.cjs",
+    "test:parser": "esbuild test/parser.ts --bundle --platform=node --outfile=dist/parser-test.cjs --log-level=error && node dist/parser-test.cjs",
+    "test:hooks": "esbuild test/hooks.ts --bundle --platform=node --packages=external --format=cjs --outfile=dist/hooks-test.cjs --log-level=error && node dist/hooks-test.cjs",
+    "test:fuzz": "esbuild test/fuzz.ts --bundle --platform=node --outfile=dist/fuzz-test.cjs --log-level=error && node dist/fuzz-test.cjs",
+    "test:e2e": "node esbuild.mjs && esbuild test/e2e/genModel.ts --bundle --platform=node --outfile=dist/e2e-genmodel.cjs --log-level=error && node dist/e2e-genmodel.cjs && playwright test",
+    "test:ui": "node esbuild.mjs && extest setup-and-run './test/ui/*.test.js' --extensions_dir .test-extensions -o ./test/ui/settings.json",
+    "gen:screenshots": "node esbuild.mjs && esbuild scripts/gen-demo-model.ts --bundle --platform=node --outfile=dist/gen-demo-model.cjs --log-level=error && node dist/gen-demo-model.cjs && node scripts/gen-screenshots.mjs",
+    "test:unit": "npm run test:core && npm run test:geometry && npm run test:parser && npm run test:hooks && npm run test:fuzz && npm run test:mcp",
+    "gen:icon": "node scripts/gen-icon.mjs",
+    "test:vscode": "node test/runTest.mjs",
+    "package": "npm run build && npm run build:mcp && vsce package --allow-missing-repository"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.0",
+    "@types/jsdom": "^28.0.3",
+    "@types/node": "^20.17.30",
+    "@types/react": "^18.3.20",
+    "@types/react-dom": "^18.3.7",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^3.0.0",
+    "@vscode/vsce": "^3.3.2",
+    "esbuild": "^0.25.4",
+    "jsdom": "^29.1.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.8.3",
+    "vscode-extension-tester": "^8.23.0"
+  }
+}
