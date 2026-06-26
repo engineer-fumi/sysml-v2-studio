@@ -66,10 +66,11 @@ code --install-extension engineer-fumi.sysml-v2-studio
 Claude Code に登録すると、Claude がモデルを**テキストとしてではなく構造として**
 扱えます — 解析・検証・要求一覧・ダイアグラム構造の取得をツールとして提供します。
 
-Claude Code の場合(プロジェクト直下で実行):
+Claude Desktop / Claude Code には、OS・エディタ非依存でパス探し不要の **npx** 一行で
+登録できます(プロジェクト直下で実行):
 
 ```bash
-claude mcp add sysml -- node ~/.vscode/extensions/engineer-fumi.sysml-v2-studio-*/dist/mcp.cjs "$(pwd)"
+claude mcp add sysml -- npx -y @engineer-fumi/sysml-v2-mcp "$(pwd)"
 ```
 
 公開ツール: `list_files` / `outline` / `validate` / `find_element` /

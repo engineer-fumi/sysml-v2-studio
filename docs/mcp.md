@@ -40,46 +40,52 @@ Claude Desktop / Claude Code
 
 ## 登録方法
 
-### Claude Code
+登録方法は 3 通り。**おすすめは npx(方法 A)** — OS・エディタ・拡張のインストール先に
+依存せず、コピペ 1 行で完結します。
 
-プロジェクトのルートで:
+### 方法 A: npx(推奨・ゼロインストール)
+
+npm に公開された [`@engineer-fumi/sysml-v2-mcp`](https://www.npmjs.com/package/@engineer-fumi/sysml-v2-mcp)
+を直接起動します。事前インストール不要、パス探し不要です。
+
+**Claude Code**(プロジェクトのルートで):
 
 ```bash
-claude mcp add sysml -- node <拡張のインストール先>/dist/mcp.cjs "$(pwd)"
+claude mcp add sysml -- npx -y @engineer-fumi/sysml-v2-mcp "$(pwd)"
 ```
 
-VS Code 拡張としてインストール済みなら、`dist/mcp.cjs` は次の場所にあります:
+**Claude Desktop**(macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```jsonc
+{
+  "mcpServers": {
+    "sysml": {
+      "command": "npx",
+      "args": ["-y", "@engineer-fumi/sysml-v2-mcp", "<ABS_PATH_TO_YOUR_MODEL_WORKSPACE>"]
+    }
+  }
+}
+```
+
+### 方法 B: VS Code 拡張に同梱の `dist/mcp.cjs` を指す(フォールバック)
+
+VS Code 拡張としてインストール済みなら、同梱の `dist/mcp.cjs` を直接指せます。
+ただしインストール先パスはエディタ(VS Code / Insiders / Cursor)・OS で異なり、
+バージョン付きフォルダ名の glob 展開に注意が必要です:
 
 ```bash
-# macOS / Linux
-node ~/.vscode/extensions/engineer-fumi.sysml-v2-studio-*/dist/mcp.cjs "$(pwd)"
+# macOS / Linux(zsh では glob が展開されない場合 `setopt null_glob` 等が必要)
+claude mcp add sysml -- node ~/.vscode/extensions/engineer-fumi.sysml-v2-studio-*/dist/mcp.cjs "$(pwd)"
 ```
 
-リポジトリから直接使う場合は、まずビルドします:
+### 方法 C: リポジトリからローカルビルド(開発・自前運用)
 
 ```bash
 npm install && npm run build:mcp
 claude mcp add sysml -- node "$(pwd)/dist/mcp.cjs" "$(pwd)"
 ```
 
-### Claude Desktop
-
-設定ファイル(macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`)
-に追記します。`<ABS_PATH>` は実際の絶対パスに置き換えてください。
-
-```jsonc
-{
-  "mcpServers": {
-    "sysml": {
-      "command": "node",
-      "args": [
-        "<ABS_PATH>/dist/mcp.cjs",
-        "<ABS_PATH_TO_YOUR_MODEL_WORKSPACE>"
-      ]
-    }
-  }
-}
-```
+Claude Desktop の場合は `command: "node"`, `args: ["<ABS_PATH>/dist/mcp.cjs", "<workspace>"]`。
 
 登録後、Claude に「このモデルを検証して」「要求を一覧にして」「Vehicle の
 ブロック定義図の構造を教えて」のように依頼すると、対応するツールが呼び出されます。
@@ -90,6 +96,25 @@ claude mcp add sysml -- node "$(pwd)/dist/mcp.cjs" "$(pwd)"
 - **要求トレース**: 「`list_requirements` で satisfy されていない要求を挙げて」
 - **構造理解**: 「`describe_diagram kind=ibd` で system の内部接続を説明して」
 - **リファクタ**: 「`find_element` で Engine の定義箇所を探し、名前を Powerplant に変えて」
+
+## npm パッケージの公開(メンテナ向け)
+
+npx 経路(方法 A)用の npm パッケージ `@engineer-fumi/sysml-v2-mcp` は、拡張と同じ
+ソースから**バンドル済みの `dist/mcp.cjs` 1 ファイル**として生成します。
+
+```bash
+npm run build:mcp:pkg   # dist/npm/ に publish 可能なパッケージを生成
+npm run smoke:mcp       # 生成物を stdio で起動して initialize / tools/list / tools/call を検証
+npm run publish:mcp     # build:mcp:pkg → smoke:mcp → npm publish dist/npm --access public
+```
+
+- **バージョン同期**: `scripts/build-mcp-package.mjs` がルート `package.json` の
+  `version` をそのまま採用するため、拡張(`sysml-v2-studio`)とパッケージのバージョンは
+  常に一致します。リリース時はルートの `version` を上げるだけです。
+- **公開には npm トークンが必要**(vsce と同様、人手の操作)。`npm publish` は
+  `dist/npm` ディレクトリに対して行い、リポジトリ全体は公開しません。
+- 生成物(`dist/npm/`)はビルド成果物で、`dist/` ごと `.gitignore` 済みです。
+  古いバンドルを publish しないよう、`publish:mcp` は毎回 `build:mcp` から作り直します。
 
 ## トラブルシューティング
 
