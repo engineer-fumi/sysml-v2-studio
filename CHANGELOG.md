@@ -6,6 +6,13 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Multilingual README** — the README is now available in English (default
+  `README.md`), Japanese (`README.ja.md`) and Simplified Chinese
+  (`README.zh-Hans.md`), with a language switcher at the top of each. English is
+  the Marketplace/GitHub default.
+
 ### Changed
 
 - **README overhaul** — installation, the diagram preview quick-start and the
