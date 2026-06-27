@@ -182,6 +182,22 @@ test("parses SysML connection / flow / metadata / end forms", () => {
   assert.deepStrictEqual(find(r.root, "cart").multiplicity, "[1]", "end nested feature keeps its own multiplicity");
 });
 
+test("captures expression bodies whole (lambdas, mixed statements)", () => {
+  const r = parseSysML(`package P {
+    calc total {
+      x = parts->collect { in p; mass(p) }->reduce '+' ?? 0.0;
+    }
+    expr e { 1 + 2 }
+    predicate ok { x > 0 }
+    attribute a = items->select { in i; i != null };
+  }`);
+  assert.deepStrictEqual(r.errors, [], "expression bodies with lambdas parse");
+  // a feature value and its element body are not conflated
+  const r2 = parseSysML(`package P { attribute x : Real = 5 { doc /* note */ } }`);
+  assert.deepStrictEqual(r2.errors, []);
+  assert.strictEqual(find(r2.root, "x").value, "5");
+});
+
 // ---- resolver -------------------------------------------------------------
 
 test("resolves qualified names and scope-local references", () => {

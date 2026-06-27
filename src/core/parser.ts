@@ -325,6 +325,8 @@ class Parser {
         case "rep":
         case "render":
         case "language":
+        case "locale":
+        case "not": // negated usage, e.g. `not satisfy r by p;`
           return this.parseOpaqueStatement(startTok);
         case "inv": {
           // KerML invariant: `inv [name] { boolean-expression }` — the body is
@@ -355,8 +357,11 @@ class Parser {
         case "typing":
         case "inverting":
         case "unioning":
+        case "unions":
         case "intersecting":
+        case "intersects":
         case "differencing":
+        case "differences":
           return this.parseOpaqueStatement(startTok);
         case "def": {
           // `individual def X` – def preceded only by prefix modifiers
@@ -408,6 +413,14 @@ class Parser {
           if (KERML_KINDS.has(t.text)) {
             // KerML definition: the keyword itself is the kind (no `def`).
             this.next();
+            // anonymous connector ends: `connector eng to tanks.main1;`
+            if (
+              t.text === "connector" &&
+              this.atIdentifier() &&
+              (this.peek(1).text === "to" || this.peek(1).text === ".")
+            ) {
+              return this.parseConnectBody("connector" as ElementKind, startTok, modifiers, undefined);
+            }
             return this.parseDeclaration(t.text as ElementKind, modifiers, direction, startTok);
           }
           break;
@@ -620,6 +633,7 @@ class Parser {
       }
       if (this.eat(":>") || this.eat("specializes") || this.eat("subsets")) {
         el.specializes.push(this.qnameRef(el, "specialize", false, true));
+        while (this.eat(",")) el.specializes.push(this.qnameRef(el, "specialize", false, true));
         continue;
       }
       if (this.eat(":")) {
@@ -629,6 +643,10 @@ class Parser {
       }
       if (this.at("[")) {
         el.multiplicity = this.parseMultiplicity();
+        continue;
+      }
+      if (this.at("ordered") || this.at("nonunique") || this.at("non-unique") || this.at("parallel")) {
+        el.modifiers.push(this.next().text);
         continue;
       }
       break;
@@ -655,7 +673,7 @@ class Parser {
     // bound value: `message :>> setSpeedMessage = a.b.c;`
     if (this.at("=") || this.at(":=")) {
       this.next();
-      el.value = this.captureUntil([";", "{"]);
+      el.value = this.captureExpression();
     }
     this.parseBodyOrSemi(el);
     return el;
@@ -732,9 +750,11 @@ class Parser {
       break;
     }
     // optional bound value: `event occurrence x = port.received;`
-    if (this.at("=")) {
+    // or default value: `event occurrence e [1] default thisConnection.start { … }`
+    if (this.at("=") || this.at(":=") || this.at("default")) {
       this.next();
-      el.value = this.captureUntil([";", "{"]);
+      this.eat("=");
+      el.value = this.captureExpression();
     }
     // without typing / specialization, the name references an existing element
     if (!typed && !el.specializes.length && !el.redefines.length && kw !== "event" && el.target) {
@@ -858,13 +878,17 @@ class Parser {
   /** statements we don't model in detail – capture as unknown, opaque body */
   private parseOpaqueStatement(startTok: Token): SysMLElement | undefined {
     const el = createElement("unknown", startTok.start);
-    el.name = this.captureUntil([";", "{"]).slice(0, 60);
-    if (this.at("{")) {
+    // Capture the whole statement, including expressions that mix balanced
+    // bodies with trailing operators (`return a + (xs->reduce { … } ?? 0);`,
+    // `accept Sig { … }`). captureExpression() balances and absorbs lambda
+    // bodies; a remaining non-lambda `{ … }` is the statement's own body.
+    let text = this.captureExpression();
+    while (this.at("{")) {
       el.value = this.captureBracedBody();
-      this.eat(";");
-    } else {
-      this.eat(";");
+      text += " " + this.captureExpression();
     }
+    el.name = text.trim().slice(0, 60);
+    this.eat(";");
     el.end = this.prevEnd();
     return el.name || el.value ? el : undefined;
   }
@@ -918,6 +942,21 @@ class Parser {
       // KerML `conjugates B` — conjugation specializes its target
       if (this.eat("conjugates") || this.eat("conjugate")) {
         el.specializes.push(this.qnameRef(el, "specialize", false, true));
+        continue;
+      }
+      // KerML conjugation operator `feature g ~ B::f;` (parse-only)
+      if (this.eat("~")) {
+        this.parseQualifiedName(false, true);
+        continue;
+      }
+      // connector tuple ends: `connector c : ProductSelection (a, b, c)`
+      if (this.at("(")) {
+        let depth = 0;
+        do {
+          const t = this.next();
+          if (t.text === "(") depth++;
+          else if (t.text === ")") depth--;
+        } while (depth > 0 && this.peek().type !== "eof");
         continue;
       }
       // KerML feature relationships kept as parse-only (consumed, not resolved)
@@ -1016,7 +1055,7 @@ class Parser {
     if (this.at("=") || this.at(":=") || this.at("default")) {
       this.next();
       this.eat("="); // `default =`
-      el.value = this.captureUntil([";", "{"]);
+      el.value = this.captureExpression();
     }
 
     this.parseBodyOrSemi(el);
@@ -1052,11 +1091,13 @@ class Parser {
 
   /** body `{ ... }` or `;` */
   private parseBodyOrSemi(el: SysMLElement): void {
-    // constraint / calc bodies contain expressions, not member elements
+    // constraint / calc / KerML expression bodies contain expressions, not
+    // member elements — keep them as opaque text.
     if (
       this.at("{") &&
       (el.kind === "constraint" || el.kind === "constraint def" ||
-        el.kind === "calc" || el.kind === "calc def")
+        el.kind === "calc" || el.kind === "calc def" ||
+        el.kind === "expr" || el.kind === "predicate")
     ) {
       el.value = el.value ?? this.captureBracedBody();
       el.end = this.prevEnd();
@@ -1145,6 +1186,38 @@ class Parser {
   /** a.b.c style feature chain (also accepts :: qualified prefixes) */
   private parseFeatureChain(): string {
     return this.parseQualifiedName(false, true);
+  }
+
+  /**
+   * Capture a value / expression up to `;` (or the enclosing `}`) at depth 0,
+   * balancing `()` and `[]`. A `{` at depth 0 is absorbed only when it is a
+   * lambda body — i.e. the value begins with it or the expression already used a
+   * higher-order call `->` (`x->reduce { in s; in t; s + t }`). Otherwise the
+   * `{` opens the element's own body, so capture stops before it. Expressions
+   * stay opaque text — this only fixes where a value ends.
+   */
+  private captureExpression(): string {
+    const startTok = this.peek();
+    let depth = 0;
+    let endOffset = startTok.start;
+    let sawArrow = false;
+    let prev = "";
+    while (this.peek().type !== "eof") {
+      const t = this.peek();
+      if (depth === 0) {
+        if (t.text === ";" || t.text === "}") break;
+        // a `{` opens the element body unless it is a lambda — the value starts
+        // with it, or follows a higher-order call (`->reduce { … }`, `x.{ … }`)
+        if (t.text === "{" && !sawArrow && prev !== "." && endOffset !== startTok.start) break;
+      }
+      if (t.text === "->") sawArrow = true;
+      if (t.text === "(" || t.text === "[" || t.text === "{") depth++;
+      else if (t.text === ")" || t.text === "]" || t.text === "}") depth--;
+      this.next();
+      prev = t.text;
+      endOffset = t.end;
+    }
+    return this.src.slice(startTok.start, endOffset).trim();
   }
 
   /** Capture raw source text until one of the stop tokens (at depth 0). */
