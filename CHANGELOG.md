@@ -8,6 +8,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Expression bodies parse cleanly** — values and statements that mix balanced
+  bodies with trailing operators (`a = parts->reduce { in s; in t; s + t } ?? 0;`,
+  `return a + (xs->collect { … });`) are captured whole instead of breaking at the
+  first `{`, while a feature's own `{ body }` is still kept separate from its value.
+  KerML `expr` / `predicate` bodies are treated as opaque expressions (like `calc` /
+  `constraint`). With this, the parser handles **~96% of the official OMG corpus**
+  without errors (1197→49 parse errors across the KerML/SysML examples and the full
+  standard library); expressions remain opaque text by design.
+
 - **Wider SysML connection / flow / metadata grammar** — the parser now accepts
   flow & message usages with redefinition, typing and bodies (`flow :>> m : T {…}`,
   `message m of T[n]`, `message :>> m = a.b`), anonymous typed features after a
