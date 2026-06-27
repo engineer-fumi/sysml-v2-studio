@@ -47,7 +47,7 @@ export const KEYWORDS = new Set([
   "intersecting", "intersects", "differencing", "differences", "featuring",
   "featured", "typing", "typed", "inverting", "inverse", "chains", "crosses",
   "const", "portion", "var", "meta", "member", "inv", "succ", "bindings",
-  "composite",
+  "composite", "constant",
 ]);
 
 const PUNCT2 = [":>>", "::>", "..", "::", ":>", ":=", "==", "!=", "<=", ">=", "->", "=>", "**"];
