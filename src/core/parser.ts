@@ -35,7 +35,7 @@ const PREFIX_MODIFIERS = new Set([
   "standard", "default", "ordered", "non-unique", "nonunique", "parallel",
   "ref", "subject", "actor", "stakeholder", "frame",
   // KerML feature/definition modifiers
-  "composite", "portion", "const", "var", "member",
+  "composite", "portion", "const", "constant", "var", "member",
 ]);
 
 const COMPOUND_USE_CASE = "use"; // "use case [def]"
@@ -392,6 +392,16 @@ class Parser {
             this.next();
             const isDef = this.eat("def");
             const kind = (isDef ? `${t.text} def` : t.text) as ElementKind;
+            // anonymous path connection: `interface a.b to c.d;` (no name, the
+            // identifier is the first end's path)
+            if (
+              !isDef &&
+              (kind === "interface" || kind === "connection" || kind === "allocation") &&
+              this.atIdentifier() &&
+              (this.peek(1).text === "." || this.peek(1).text === "to")
+            ) {
+              return this.parseConnectBody(kind, startTok, modifiers, undefined);
+            }
             // `connection x connect a to b;` and plain `connection def`
             return this.parseDeclaration(kind, modifiers, direction, startTok);
           }
@@ -416,7 +426,9 @@ class Parser {
     if (
       t.text === ":>>" || t.text === "redefines" ||
       t.text === ":>" || t.text === "specializes" || t.text === "subsets" ||
-      t.text === "::>" || t.text === "references" || t.text === "="
+      t.text === "::>" || t.text === "references" || t.text === "=" ||
+      // anonymous typed feature after a modifier: `subject : Engine[1..*] = …`
+      (t.text === ":" && modifiers.length > 0)
     ) {
       return this.parseDeclaration("ref", modifiers, direction, startTok, /*implicitKind*/ true);
     }
@@ -590,16 +602,36 @@ class Parser {
       this.next();
       return this.parseDeclarationTail(el, "flow def" as ElementKind, startTok);
     }
-    // optional name: `flow fuelFlow from ...` / `flow f : FuelFlow from ...`
+    // optional name: `flow fuelFlow from …` / `flow f : FuelFlow from …`
     if (
-      this.atIdentifier() &&
-      ["from", "of", ":"].includes(this.peek(1).text)
+      this.atNameToken() &&
+      ["from", "of", ":", ":>", ":>>", "subsets", "redefines", "[", "{", ";"].includes(this.peek(1).text)
     ) {
       const t = this.next();
       el.name = unquoteName(t.text);
       el.nameStart = t.start;
       el.nameEnd = t.end;
-      if (this.eat(":")) el.typedBy.push(this.qnameRef(el, "type"));
+    }
+    // relationship clauses — a flow may be a feature usage: `flow :>> pm : MT { … }`
+    for (;;) {
+      if (this.eat(":>>") || this.eat("redefines")) {
+        el.redefines.push(this.qnameRef(el, "redefine", false, true));
+        continue;
+      }
+      if (this.eat(":>") || this.eat("specializes") || this.eat("subsets")) {
+        el.specializes.push(this.qnameRef(el, "specialize", false, true));
+        continue;
+      }
+      if (this.eat(":")) {
+        el.typedBy.push(this.qnameRef(el, "type", false, true));
+        while (this.eat(",")) el.typedBy.push(this.qnameRef(el, "type", false, true));
+        continue;
+      }
+      if (this.at("[")) {
+        el.multiplicity = this.parseMultiplicity();
+        continue;
+      }
+      break;
     }
     if (this.eat("of")) {
       // payload may be declared as `name : Type`
@@ -607,7 +639,8 @@ class Parser {
         this.next(); // payload name
         this.next(); // ':'
       }
-      el.typedBy.push(this.qnameRef(el, "type"));
+      el.typedBy.push(this.qnameRef(el, "type", false, true));
+      if (this.at("[")) el.multiplicity = this.parseMultiplicity();
     }
     const ends: ConnectionEnd[] = [];
     if (this.eat("from")) {
@@ -619,6 +652,11 @@ class Parser {
       if (this.eat("to")) ends.push({ path: this.qnameRef(el, "end", false, true) });
     }
     el.ends = ends;
+    // bound value: `message :>> setSpeedMessage = a.b.c;`
+    if (this.at("=") || this.at(":=")) {
+      this.next();
+      el.value = this.captureUntil([";", "{"]);
+    }
     this.parseBodyOrSemi(el);
     return el;
   }
@@ -654,11 +692,15 @@ class Parser {
       return el;
     }
     const t2 = this.peek();
-    el.target = this.parseQualifiedName(/*allowStar*/ kw === "expose", /*allowDots*/ true);
-    const targetEnd = this.qnameEnd;
-    el.name = el.target;
-    el.nameStart = t2.start;
-    el.nameEnd = t2.end;
+    let targetEnd = this.qnameEnd;
+    // anonymous reference usage: `event occurrence :>> x = …` has no target name
+    if (this.atNameToken()) {
+      el.target = this.parseQualifiedName(/*allowStar*/ kw === "expose", /*allowDots*/ true);
+      targetEnd = this.qnameEnd;
+      el.name = el.target;
+      el.nameStart = t2.start;
+      el.nameEnd = t2.end;
+    }
     // optional typing: `exhibit state b : Behavior;` – then it's a declaration
     let typed = false;
     if (this.eat(":")) {
@@ -800,11 +842,14 @@ class Parser {
       this.next();
       return this.parseDeclarationTail(el, "action", startTok);
     }
-    if (this.at("send") || this.at("accept")) {
-      // `do send X via port;` – opaque effect text
+    if (this.at("send") || this.at("accept") || this.at("assign")) {
+      // `do send X via port;` / `entry assign x := 0;` – opaque effect text
       this.captureUntil([";", "{"]);
     } else if (this.atIdentifier()) {
       el.target = this.parseFeatureChain();
+    } else if (this.peek().type === "keyword" && !this.at(";") && !this.at("{")) {
+      // any other control keyword used as an entry/exit/do effect — keep opaque
+      this.captureUntil([";", "{"]);
     }
     this.parseBodyOrSemi(el);
     return el;
@@ -912,7 +957,30 @@ class Parser {
         el.modifiers.push(this.next().text);
         continue;
       }
+      // `end <endName> [mult] item <feature> : T` — a connection end that is
+      // itself a typed feature; absorb the inner kind + name into this element.
+      if (
+        el.name &&
+        this.peek().type === "keyword" &&
+        (DEF_KINDS.has(this.peek().text) || KERML_KINDS.has(this.peek().text))
+      ) {
+        el.kind = this.next().text as ElementKind;
+        if (this.atNameToken()) {
+          const t = this.next();
+          el.name = unquoteName(t.text);
+          el.nameStart = t.start;
+          el.nameEnd = t.end;
+        }
+        continue;
+      }
       break;
+    }
+
+    // metadata usage `about` targets: `metadata X : Issue about a, b { … }`
+    if (this.eat("about")) {
+      do {
+        this.qnameRef(el, "target", false, true);
+      } while (this.eat(","));
     }
 
     // KerML connector ends: `connector c from a to b;` / `… from [1] self to [*] x`

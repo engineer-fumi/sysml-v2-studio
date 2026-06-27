@@ -161,6 +161,27 @@ test("parses KerML succession / binding / disjoining variants", () => {
   assert.deepStrictEqual(r.errors, [], "succession/binding/disjoining variants parse");
 });
 
+test("parses SysML connection / flow / metadata / end forms", () => {
+  const r = parseSysML(`package P {
+    flow :>> publish_message : Transfers::MessageTransfer { in item x; }
+    message setSpeedMessage of CallGiveItems[1];
+    message :>> sm = a.b.sentMessage;
+    subject : Engine[1..*] = (engine1, engine2);
+    constant attribute k[0..2];
+    metadata Issue1 : Issue about engineToTransmission { }
+    interface producer.publicationPort to server.publicationPort;
+    connection conn {
+      end inCart [0..1] item cart : ShoppingCart[1];
+    }
+    state s { entry assign counter.count := 0; }
+    occurrence o { event occurrence :>> target = msg.done; }
+  }`);
+  assert.deepStrictEqual(r.errors, [], "Phase 2 SysML forms parse");
+  assert.strictEqual(find(r.root, "k").modifiers.includes("constant"), true);
+  assert.strictEqual(find(r.root, "Issue1").kind, "metadata");
+  assert.deepStrictEqual(find(r.root, "cart").multiplicity, "[1]", "end nested feature keeps its own multiplicity");
+});
+
 // ---- resolver -------------------------------------------------------------
 
 test("resolves qualified names and scope-local references", () => {

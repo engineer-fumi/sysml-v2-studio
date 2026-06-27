@@ -8,6 +8,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Wider SysML connection / flow / metadata grammar** — the parser now accepts
+  flow & message usages with redefinition, typing and bodies (`flow :>> m : T {…}`,
+  `message m of T[n]`, `message :>> m = a.b`), anonymous typed features after a
+  modifier (`subject : Engine[1..*] = (…)`), nested connection ends
+  (`end inCart [0..1] item cart : T`), metadata `about` targets, anonymous path
+  connections (`interface a.b to c.d`), `entry assign …` effects, anonymous
+  reference-usage targets (`event occurrence :>> x = …`) and the `constant`
+  modifier. Measured against the official OMG corpus, SysML example parse errors
+  dropped 101→21 (with knock-on gains: KerML 49→36, standard library 79→46).
+
 - **KerML foundation layer now parses** — the parser recognises KerML definition
   keywords (`classifier` / `feature` / `function` / `predicate` / `datatype` /
   `struct` / `class` / `metaclass` / `behavior` / `assoc[iation]` / `connector` /
