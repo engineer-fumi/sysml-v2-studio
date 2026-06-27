@@ -40,6 +40,17 @@ const PREFIX_MODIFIERS = new Set([
 
 const COMPOUND_USE_CASE = "use"; // "use case [def]"
 
+/**
+ * Keywords that must never be read as a name in a reference position — they are
+ * clause separators (`a to b`, `first x then y`, `of T`). Every *other* keyword
+ * may legitimately be a referenced element name: the OMG standard library names
+ * features `decide`, `merge`, `step`, `member`, `type`, … and references them by
+ * that bare word.
+ */
+const NON_NAME_KEYWORDS = new Set([
+  "to", "then", "from", "by", "of", "via", "if", "else", "first",
+]);
+
 class Parser {
   private tokens: Token[];
   private pos = 0;
@@ -339,6 +350,7 @@ class Parser {
         case "redefinition":
         case "conjugation":
         case "disjoining":
+        case "disjoint":
         case "featuring":
         case "typing":
         case "inverting":
@@ -554,6 +566,7 @@ class Parser {
       }
     }
     this.eat("bind");
+    this.eat("of"); // `binding ab of a = b`
     if (this.at("[")) this.parseMultiplicity(); // `bind [0..*] x = …`
     const a = this.qnameRef(el, "end", false, true);
     const ends: ConnectionEnd[] = [{ path: a }];
@@ -700,6 +713,7 @@ class Parser {
     el.modifiers = modifiers;
     this.takePendingDoc(el);
     el.transition = {};
+    if (this.at("all")) el.modifiers.push(this.next().text); // `succession all [*] …`
     if (kw.text !== "first" && this.atIdentifier() && this.peek(1).text !== ".") {
       const lookahead = this.peek(1).text;
       if (["first", "then", "accept", "if"].includes(lookahead) || this.peek(1).type === "punct") {
@@ -714,8 +728,7 @@ class Parser {
       el.typedBy.push(this.qnameRef(el, "type", false, true));
       while (this.eat(",")) el.typedBy.push(this.qnameRef(el, "type", false, true));
     }
-    // KerML relationship clauses before `first`: `succession redefines p … first …`,
-    // `succession s [1] first …`
+    // KerML relationship clauses before `first`: `succession redefines p : T [1] first …`
     for (;;) {
       if (this.eat(":>>") || this.eat("redefines")) {
         el.redefines.push(this.qnameRef(el, "redefine", false, true));
@@ -723,6 +736,11 @@ class Parser {
       }
       if (this.eat(":>") || this.eat("specializes") || this.eat("subsets")) {
         el.specializes.push(this.qnameRef(el, "specialize", false, true));
+        continue;
+      }
+      if (this.eat(":") || this.eat("typed")) {
+        this.eat("by");
+        el.typedBy.push(this.qnameRef(el, "type", false, true));
         continue;
       }
       if (this.at("[")) {
@@ -733,6 +751,9 @@ class Parser {
     }
     if (kw.text === "first" || this.eat("first")) {
       if (this.at("[")) this.parseMultiplicity(); // `first [n] source`
+      el.transition.source = this.qnameRef(el, "end", false, true);
+    } else if (this.atNameToken() && !this.at("then")) {
+      // implicit first: `succession [n] source then [n] target`
       el.transition.source = this.qnameRef(el, "end", false, true);
     }
     if (this.eat("accept")) {
@@ -895,11 +916,12 @@ class Parser {
     }
 
     // KerML connector ends: `connector c from a to b;` / `… from [1] self to [*] x`
+    // / `from [1] src references tgt`
     if (this.at("from")) {
       this.next();
       if (this.at("[")) this.parseMultiplicity();
       const ends: ConnectionEnd[] = [{ path: this.qnameRef(el, "end", false, true) }];
-      while (this.eat("to") || this.eat(",")) {
+      while (this.eat("to") || this.eat("references") || this.eat(",")) {
         if (this.at("[")) this.parseMultiplicity();
         ends.push({ path: this.qnameRef(el, "end", false, true) });
       }
@@ -992,7 +1014,7 @@ class Parser {
   private atNameToken(offset = 0): boolean {
     const t = this.peek(offset);
     if (t.type === "identifier") return true;
-    return t.type === "keyword" && KERML_KINDS.has(t.text);
+    return t.type === "keyword" && !NON_NAME_KEYWORDS.has(t.text);
   }
 
   /** A::B::C  (optionally ending with ::* for imports, optionally with dots) */
