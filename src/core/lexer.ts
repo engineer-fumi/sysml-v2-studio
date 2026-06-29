@@ -50,7 +50,12 @@ export const KEYWORDS = new Set([
   "composite", "constant",
 ]);
 
-const PUNCT2 = [":>>", "::>", "..", "::", ":>", ":=", "==", "!=", "<=", ">=", "->", "=>", "**"];
+// Longer operators must precede their prefixes (the matcher returns the first
+// `startsWith`), e.g. `===` before `==`, `!==` before `!=`, `:>>` before `:>`.
+const PUNCT2 = [
+  ":>>", "::>", "===", "!==", "..", "::", ":>", ":=", "==", "!=", "<=", ">=",
+  "->", "=>", "**", "??", ".?",
+];
 
 export function tokenize(src: string): Token[] {
   const tokens: Token[] = [];

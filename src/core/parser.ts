@@ -8,6 +8,7 @@ import {
   createElement,
 } from "./ast";
 import { Token, tokenize, unquoteName } from "./lexer";
+import { parseExpression, parseBodyExpression } from "./expr";
 
 /** Keywords that can be followed by `def` to form a definition kind. */
 const DEF_KINDS = new Set([
@@ -673,7 +674,7 @@ class Parser {
     // bound value: `message :>> setSpeedMessage = a.b.c;`
     if (this.at("=") || this.at(":=")) {
       this.next();
-      el.value = this.captureExpression();
+      this.captureValue(el);
     }
     this.parseBodyOrSemi(el);
     return el;
@@ -754,7 +755,7 @@ class Parser {
     if (this.at("=") || this.at(":=") || this.at("default")) {
       this.next();
       this.eat("=");
-      el.value = this.captureExpression();
+      this.captureValue(el);
     }
     // without typing / specialization, the name references an existing element
     if (!typed && !el.specializes.length && !el.redefines.length && kw !== "event" && el.target) {
@@ -1055,7 +1056,7 @@ class Parser {
     if (this.at("=") || this.at(":=") || this.at("default")) {
       this.next();
       this.eat("="); // `default =`
-      el.value = this.captureExpression();
+      this.captureValue(el);
     }
 
     this.parseBodyOrSemi(el);
@@ -1099,7 +1100,11 @@ class Parser {
         el.kind === "calc" || el.kind === "calc def" ||
         el.kind === "expr" || el.kind === "predicate")
     ) {
-      el.value = el.value ?? this.captureBracedBody();
+      if (el.value === undefined) {
+        const start = this.peek().start;
+        el.value = this.captureBracedBody();
+        el.valueExpr = parseBodyExpression(el.value, start);
+      }
       el.end = this.prevEnd();
       return;
     }
@@ -1196,6 +1201,13 @@ class Parser {
    * `{` opens the element's own body, so capture stops before it. Expressions
    * stay opaque text — this only fixes where a value ends.
    */
+  /** Capture a value expression's raw text and parse it into an AST. */
+  private captureValue(el: SysMLElement): void {
+    const start = this.peek().start;
+    el.value = this.captureExpression();
+    el.valueExpr = parseExpression(el.value, start);
+  }
+
   private captureExpression(): string {
     const startTok = this.peek();
     let depth = 0;
