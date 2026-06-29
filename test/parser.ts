@@ -6,7 +6,7 @@ import * as assert from "node:assert";
 import { SysMLElement, createElement, walk } from "../src/core/ast";
 import { parseSysML } from "../src/core/parser";
 import { Resolver } from "../src/core/resolve";
-import { Expr, parseExpression, collectExprRefs } from "../src/core/expr";
+import { Expr, parseExpression, collectExprRefs, pathAtOffset } from "../src/core/expr";
 
 let passed = 0;
 function test(title: string, fn: () => void): void {
@@ -336,6 +336,46 @@ test("unparseable expressions fall back to opaque", () => {
   // a multi-statement function body is not a single expression
   const e = expr("in x: Real; in y: Real; return : Real;");
   assert.strictEqual(e.kind, "opaque");
+});
+
+test("pathAtOffset reconstructs the feature chain under the cursor", () => {
+  const src = "engine.fuelPort.flowRate";
+  const e = parseExpression(src);
+  // cursor on each segment yields the chain up to and including it
+  assert.strictEqual(pathAtOffset(e, src.indexOf("engine")), "engine");
+  assert.strictEqual(pathAtOffset(e, src.indexOf("fuelPort")), "engine.fuelPort");
+  assert.strictEqual(pathAtOffset(e, src.indexOf("flowRate")), "engine.fuelPort.flowRate");
+  // a classification type reference resolves as the type
+  const c = parseExpression("x istype Vehicle");
+  assert.strictEqual(pathAtOffset(c, "x istype ".length + 2), "Vehicle");
+});
+
+test("expression feature chains resolve member-by-member through types", () => {
+  const src = `package P {
+    port def FuelPort { attribute flowRate; }
+    part def Engine { port fuelPort : FuelPort; }
+    part def Car {
+      part engine : Engine;
+      attribute reading = engine.fuelPort.flowRate;
+    }
+  }`;
+  const file = parseSysML(src).root;
+  file.kind = "file";
+  const ns = createElement("namespace");
+  file.parent = ns;
+  ns.children.push(file);
+
+  const resolver = new Resolver(ns);
+  const reading = find(ns, "reading");
+  const flowRate = find(ns, "flowRate");
+
+  // the path reconstructed from the AST at the `flowRate` offset...
+  assert.ok(reading.valueExpr);
+  const at = src.indexOf("flowRate", src.indexOf("reading"));
+  const path = pathAtOffset(reading.valueExpr!, at);
+  assert.strictEqual(path, "engine.fuelPort.flowRate");
+  // ...resolves member-by-member through each step's type to the right member
+  assert.strictEqual(resolver.resolve(reading, path!), flowRate);
 });
 
 console.log(`ALL PARSER TESTS PASSED (${passed})`);
