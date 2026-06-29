@@ -406,6 +406,74 @@ export function parseBodyExpression(text: string, base = 0): Expr {
   return parseExpression(text, base);
 }
 
+/** Reconstruct the dotted feature path of a name / `.`-navigation node. */
+function pathOf(expr: Expr): string | undefined {
+  if (expr.kind === "name") return expr.name;
+  if (expr.kind === "nav" && expr.op === "." && expr.member) {
+    const base = pathOf(expr.target);
+    return base ? `${base}.${expr.member}` : undefined;
+  }
+  // an invocation keeps the callee's path (`f(x)` navigates to `f`)
+  if (expr.kind === "invoke") return pathOf(expr.callee);
+  if (expr.kind === "index") return pathOf(expr.target);
+  return undefined;
+}
+
+/**
+ * The feature path that the source `offset` lands on, reconstructed from the
+ * expression AST. Clicking `flowRate` in `engine.fuelPort.flowRate` returns
+ * `engine.fuelPort.flowRate` so the resolver can follow the chain through each
+ * member's type. Returns undefined when the offset is not on a resolvable
+ * name / member / type reference.
+ */
+export function pathAtOffset(expr: Expr, offset: number): string | undefined {
+  const within = (s: number, e: number) => offset >= s && offset <= e;
+  switch (expr.kind) {
+    case "name":
+      return within(expr.start, expr.end) ? expr.name : undefined;
+    case "classify": {
+      if (within(expr.typeStart, expr.typeEnd)) return expr.type;
+      return pathAtOffset(expr.operand, offset);
+    }
+    case "nav": {
+      // `.`-navigation: clicking the member resolves the whole chain up to it
+      if (expr.op === "." && expr.member && within(expr.memberStart, expr.memberEnd)) {
+        const base = pathOf(expr.target);
+        return base ? `${base}.${expr.member}` : expr.member;
+      }
+      const t = pathAtOffset(expr.target, offset);
+      if (t) return t;
+      if (expr.args) for (const a of expr.args) {
+        const r = pathAtOffset(a, offset);
+        if (r) return r;
+      }
+      return undefined;
+    }
+    case "index":
+      return pathAtOffset(expr.target, offset) ?? firstHit(expr.args, offset);
+    case "invoke":
+      return pathAtOffset(expr.callee, offset) ?? firstHit(expr.args, offset);
+    case "unary":
+      return pathAtOffset(expr.operand, offset);
+    case "binary":
+      return pathAtOffset(expr.left, offset) ?? pathAtOffset(expr.right, offset);
+    case "cond":
+      return pathAtOffset(expr.cond, offset) ?? pathAtOffset(expr.then, offset) ?? pathAtOffset(expr.otherwise, offset);
+    case "seq":
+      return firstHit(expr.items, offset);
+    default:
+      return undefined;
+  }
+}
+
+function firstHit(items: Expr[], offset: number): string | undefined {
+  for (const it of items) {
+    const r = pathAtOffset(it, offset);
+    if (r) return r;
+  }
+  return undefined;
+}
+
 /** Collect leftmost name references (for navigation / resolution). */
 export function collectExprRefs(expr: Expr, out: ExprRef[] = []): ExprRef[] {
   switch (expr.kind) {
