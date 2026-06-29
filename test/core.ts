@@ -117,6 +117,42 @@ test("all samples validate clean", () => {
   assert.ok(sampleFiles.length >= 17, `expected >= 17 sample files, got ${sampleFiles.length}`);
 });
 
+// type checking fires only on positive type knowledge
+function typeDiags(src: string): string[] {
+  const ns = createElement("namespace");
+  const f = parseSysML(src).root;
+  f.kind = "file";
+  f.name = "t.sysml";
+  f.parent = ns;
+  ns.children.push(f);
+  const resolver = new Resolver(ns);
+  return validateFile(f, resolver, {
+    unresolved: false, duplicates: false, conformance: false,
+    shadowing: false, importVisibility: false, typeChecking: true,
+  }).filter((d) => d.rule === "type").map((d) => d.message);
+}
+
+test("type checking flags non-Boolean constraint bodies and value mismatches", () => {
+  // a constraint body that evaluates to a number is wrong
+  assert.strictEqual(typeDiags(`part def C { attribute mass : Real; constraint x { mass + 1 } }`).length, 1);
+  // a Boolean comparison body is fine
+  assert.strictEqual(typeDiags(`part def C { attribute mass : Real; constraint x { mass < 1 } }`).length, 0);
+  // a number value assigned to a Boolean attribute conflicts
+  assert.strictEqual(typeDiags(`part def C { attribute flag : Boolean = 3; }`).length, 1);
+  // matching scalar families are fine
+  assert.strictEqual(typeDiags(`part def C { attribute n : Real = 5; }`).length, 0);
+  assert.strictEqual(typeDiags(`part def C { attribute s : String = "hi"; }`).length, 0);
+});
+
+test("type checking never fires on unknown / unresolved expressions", () => {
+  // an unresolved function call infers as unknown -> no false positive
+  assert.strictEqual(typeDiags(`part def C { constraint x { mysteryPredicate(thing) } }`).length, 0);
+  // a constraint over an unresolved name -> unknown -> no diagnostic
+  assert.strictEqual(typeDiags(`part def C { constraint x { whatever } }`).length, 0);
+  // a non-primitive declared type -> unknown declared type -> no diagnostic
+  assert.strictEqual(typeDiags(`part def C { attribute a : SomeType = 3; }`).length, 0);
+});
+
 test("every diagram kind lays out the combined model", () => {
   for (const k of DIAGRAM_KINDS) {
     const l = layoutDiagram(root, { kind: k.id });

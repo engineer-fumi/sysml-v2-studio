@@ -155,6 +155,17 @@
           ],
           "default": "warning",
           "description": "import の可視性 (public / private) が明示されていない場合の診断レベル"
+        },
+        "sysml.validation.typeChecking": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "information",
+            "off"
+          ],
+          "default": "warning",
+          "description": "式の型チェック (制約本体は Boolean、値は宣言型に適合 等) の診断レベル。型が確実に判明した場合のみ報告します"
         }
       }
     }

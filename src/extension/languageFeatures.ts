@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { SysMLElement, elementLabel, qualifiedName } from "../core/ast";
 import { pathAtOffset } from "../core/expr";
+import { inferType, typeLabel } from "../core/types";
 import { KEYWORDS } from "../core/lexer";
 import { Resolver } from "../core/resolve";
 import { SemanticRule, validateFile } from "../core/validate";
@@ -56,6 +57,7 @@ export function registerDiagnostics(
       conformance: severityOf(cfg.get<SeveritySetting>("typeConformance", "warning")),
       shadowing: severityOf(cfg.get<SeveritySetting>("shadowing", "warning")),
       importVisibility: severityOf(cfg.get<SeveritySetting>("importVisibility", "warning")),
+      type: severityOf(cfg.get<SeveritySetting>("typeChecking", "warning")),
     };
 
     const resolver = new Resolver(index.combinedRoot(/*includeBuiltin*/ true));
@@ -102,6 +104,7 @@ export function registerDiagnostics(
         conformance: !!sevByRule.conformance,
         shadowing: !!sevByRule.shadowing,
         importVisibility: !!sevByRule.importVisibility,
+        typeChecking: !!sevByRule.type,
       });
       for (const s of semantic) {
         const severity = sevByRule[s.rule];
@@ -411,9 +414,11 @@ export function registerHover(
         const resolver = new Resolver(index.combinedRoot(true));
         const ref = resolver.resolve(el, exprPath);
         if (ref && ref !== el) {
+          const t = inferType({ kind: "name", name: exprPath, start: 0, end: 0 }, el, resolver);
           md.appendMarkdown(
             `\n\n---\n**${exprPath}** (${ref.kind} ${qualifiedName(ref)})` +
               (ref.typedBy.length ? ` : ${ref.typedBy.join(", ")}` : "") +
+              (t.kind !== "unknown" ? `\n\n型: \`${typeLabel(t)}\`` : "") +
               (ref.doc ? `\n\n${ref.doc}` : "")
           );
         }
