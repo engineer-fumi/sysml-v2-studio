@@ -1,6 +1,6 @@
 # OMG SysML v2 対応範囲 (conformance matrix)
 
-> 対象バージョン: **v0.7.1** / 最終更新: **2026-06-27**
+> 対象バージョン: **v0.8.0** / 最終更新: **2026-07-07**
 
 本拡張は OMG SysML v2 テキスト記法の**実用サブセット**を実装しています。この
 ページは「どの言語領域を、どこまで扱えるか」をコードに基づいて棚卸ししたものです。
@@ -29,11 +29,11 @@
 | Connections / Interfaces / Bindings / Flows | **Full**(構造) | `parser.ts` `parseConnectBody`/`parseBind`/`parseFlow`、`viewSpecs.ts` `isEdgeElement` |
 | States & Transitions (trigger / guard / effect) | **Partial** | `parser.ts` `parseTransition`(trigger/guard はテキスト、`do` 効果は破棄) |
 | Actions / Calc / Successions | **Partial** | `parser.ts`(制御フロー文は `parseOpaqueStatement` で不透明) |
-| Requirements / Constraints / satisfy・verify | **Full**(構造)/ 式は不透明 | `parser.ts` `parseReferenceUsage`、`viewSpecs.ts` `req` の `refEdges` |
+| Requirements / Constraints / satisfy・verify | **Full**(構造)/ 式は AST+型検査 | `parser.ts` `parseReferenceUsage`、`viewSpecs.ts` `req` の `refEdges`、`validate.ts` `type` |
 | Use Cases / Actors / include・perform | **Full** | `parser.ts` `parseReferenceUsage`、`viewSpecs.ts` `uc`(`hoistActors`) |
 | Views / Viewpoints / Rendering / expose | **Partial** | `viewSpecs.ts` `view`/`viewpoint`/`rendering` は box 化、`expose`/`render` はレンダリング非実装 |
 | Metadata / Annotations (`@`, `#`, `metadata def`) | **Full**(パース) | `parser.ts` `@`/`#` 処理、`validate.ts` metadata ref チェック |
-| Expressions(constraint / calc 本体・値・guard など) | **Parse-only(不透明)** | `parser.ts` `captureBracedBody`/`captureUntil`(型チェックなし) |
+| Expressions(値・constraint / calc 本体) | **Partial(AST+型検査、評価なし)** | `expr.ts`(優先順位パーサ)、`types.ts` `inferType`、`validate.ts` `type` ルール、`languageFeatures.ts` `pathAtOffset` |
 | Imports / Aliases / Visibility (public / private) | **Partial**(可視性は近似) | `parser.ts` `parseImport`/`parseAlias`、`resolve.ts`(private/protected 非強制) |
 | Comments / Documentation (`//`, `/* */`, `doc`, `comment`) | **Full** | `lexer.ts`、`parser.ts` `parseDoc`/`parseComment` |
 | Standard Library | **最小サブセット同梱** | `stdlib.ts` `STDLIB_FILES`(完全な OMG ライブラリではない) |
@@ -96,7 +96,8 @@
   `for` / `merge` / `decide` / `fork` / `join` / `return` / `else` / `until` /
   `terminate` / `assert` / `assume` / `require` — は `parseOpaqueStatement`
   (`parser.ts`)で**不透明テキスト**として読み飛ばし、データ/制御フローのセマンティクスは
-  構築しません。`calc` 本体も式として不透明です。
+  構築しません(例外: `fork` / `join` / `merge` / `decide` の宣言形は名前付きメンバーに
+  なり succession から解決できます)。単一式の `calc` 本体は AST 化されます(Expressions 節)。
 - **可視化**: `action` 図でアクションを箱、`succession` / `flow` / `transition` を
   エッジとして描画。
 
@@ -105,8 +106,9 @@
 `requirement [def]` / `constraint [def]` / `concern [def]`、`satisfy` / `verify`
 (内部的には `satisfy` 種別)、`assert constraint`、`objective`。
 
-- **限界**: `constraint` / `calc` の `{ … }` 本体は**式として不透明**(`captureBracedBody`)。
-  `require` / `assume` / `assert` 文も不透明。
+- 単一式の `constraint` 本体は AST 化され、**Boolean に評価されるか型検査**されます
+  (`validate.ts` `type` ルール、positive knowledge のみ — 詳細は Expressions 節)。
+- **限界**: 複文の本体と `require` / `assume` / `assert` 文は不透明のまま。
 - **可視化**: `req` 図で要求を箱、`satisfy` を参照エッジ(`refEdges`)、`doc` を本文行として描画。
 
 ### Use Cases / Actors / include・perform — Full
@@ -130,11 +132,23 @@
 - `metadata def`
 - **検証**: メタデータ注釈が `metadata def` を参照しているかをチェック(`validate.ts`)。
 
-### Expressions — Parse-only(不透明)
+### Expressions — Partial(AST + 型検査、評価なし)
 
-`constraint` / `calc` の本体、`= expr` の値、遷移の trigger / guard、`return` などの
-式は**生のテキストとして保持**するだけです(`captureBracedBody` / `captureUntil`)。
-式の構文木構築・評価・型チェックは行いません。これは設計上の割り切りです。
+`= expr` の値と、単一式の `constraint` / `calc` 本体は、KerML `OwnedExpression` に
+沿った**優先順位パーサ**(`expr.ts`)で構造化 AST(`valueExpr`)になります。生テキスト
+(`value`)も併せて保持します。OMG 公式コーパスの値式の **91.9%** が AST 化されます
+(残りは `in x:T; … return …;` のような複文本体で、単一式でないため意図的に不透明)。
+
+- **ナビゲーション**: フィーチャチェーン(`a.b.c`)はカーソル位置から AST でパスを再構成し
+  (`pathAtOffset`)、各ステップの型を辿ってメンバー単位で定義ジャンプ / ホバー解決します。
+- **型検査**(`types.ts` `inferType` + `validate.ts` `type` ルール): **positive knowledge
+  のみ** — 演算子(`<`→Boolean、`+`→number)・リテラル・解決済みフィーチャの宣言スカラー型
+  から導ける場合だけ型を報告し、不確かなものはすべて `unknown` として**診断を出しません**
+  (偽陽性ゼロを OMG コーパス全 311 ファイルで確認)。検査対象: ① constraint 本体は Boolean に
+  評価されること、② 値がフィーチャの宣言スカラー型に適合すること。設定
+  `sysml.validation.typeChecking`(既定: warning)。ホバーに推論型を表示します。
+- **限界**: 式の**評価**(値の計算)はしません。呼び出し / calc の戻り型推論は `unknown`
+  (意図的に保守的)。遷移の trigger / guard、複文の action 本体は従来どおりテキストです。
 
 ### Imports / Aliases / Visibility — Partial(可視性は近似)
 
@@ -190,7 +204,8 @@ import で解決し、F12 で同梱ライブラリへジャンプできます。
 
 ## 既知の限界(まとめ)
 
-- **式は不透明** — constraint / calc 本体、値、guard / trigger は型チェックなしのテキスト。
+- **式は評価しない** — 値と単一式本体は AST 化+positive-knowledge 型検査まで
+  (呼び出しの戻り型は `unknown`)。guard / trigger と複文本体はテキストのまま。
 - **可視性は近似** — private / protected は強制せず、`public import` の再エクスポートのみ反映。
 - **制御フローは不透明** — action / state 内の `if` / `loop` / `accept` / `send` などは
   テキストとして読み飛ばす。
