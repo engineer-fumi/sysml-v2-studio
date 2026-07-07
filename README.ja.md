@@ -196,14 +196,14 @@ package Process {
 | Definitions & Usages (part / item / attribute / port / action / state …) | **Full** |
 | Specialization (`:>` / `:>>` / `specializes` / `subsets` / `redefines`) | **Full** |
 | Connections / Interfaces / Bindings / Flows | **Full**(構造) |
-| Requirements / Constraints / satisfy・verify | **Full**(構造)/ 式は不透明 |
+| Requirements / Constraints / satisfy・verify | **Full**(構造)/ 式は AST+型検査 |
 | Use Cases / Actors / include・perform | **Full** |
 | Metadata / Annotations (`@`, `#`, `metadata def`) | **Full**(パース) |
 | Comments / Documentation (`//`, `/* */`, `doc`, `comment`) | **Full** |
 | States & Transitions / Actions / Calc | **Partial**(trigger/guard/効果・制御フローは不透明) |
 | Views / Viewpoints / Rendering | **Partial**(レンダリング非実装) |
 | Imports / Aliases / Visibility | **Partial**(private/protected は非強制) |
-| Expressions(constraint / calc 本体・値) | **Parse-only**(不透明テキスト・型チェックなし) |
+| Expressions(値・constraint / calc 本体) | **Partial**(構造化 AST+positive-knowledge 型検査・評価なし) |
 | Standard Library | **最小サブセット同梱**(完全な OMG ライブラリではない) |
 | KerML 基盤層 (classifier / feature / function …) | **Parse-only** |
 

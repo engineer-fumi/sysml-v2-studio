@@ -206,14 +206,14 @@ notation (overview based on a code audit; for details and evidence see the
 | Definitions & Usages (part / item / attribute / port / action / state …) | **Full** |
 | Specialization (`:>` / `:>>` / `specializes` / `subsets` / `redefines`) | **Full** |
 | Connections / Interfaces / Bindings / Flows | **Full** (structure) |
-| Requirements / Constraints / satisfy・verify | **Full** (structure) / expressions opaque |
+| Requirements / Constraints / satisfy・verify | **Full** (structure) / expression AST + type check |
 | Use Cases / Actors / include・perform | **Full** |
 | Metadata / Annotations (`@`, `#`, `metadata def`) | **Full** (parse) |
 | Comments / Documentation (`//`, `/* */`, `doc`, `comment`) | **Full** |
 | States & Transitions / Actions / Calc | **Partial** (trigger/guard/effect and control flow opaque) |
 | Views / Viewpoints / Rendering | **Partial** (rendering not implemented) |
 | Imports / Aliases / Visibility | **Partial** (private/protected not enforced) |
-| Expressions (constraint / calc bodies & values) | **Parse-only** (opaque text, no type checking) |
+| Expressions (values & constraint / calc bodies) | **Partial** (structured AST + positive-knowledge type checking; no evaluation) |
 | Standard Library | **minimal subset bundled** (not the full OMG library) |
 | KerML foundation layer (classifier / feature / function …) | **Parse-only** |
 
