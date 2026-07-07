@@ -1,0 +1,66 @@
+name: Flake check
+
+# Measures the flakiness of the browser/VS Code-based test jobs by running
+# each suite N times in parallel (fail-fast disabled, so every iteration
+# reports). Used as evidence before promoting a job to a required status
+# check on main — and to re-measure whenever one starts looking unstable.
+#
+# Trigger: manual dispatch, or push a `flake-check/**` branch (lets a PR
+# branch measure itself before the workflow exists on main).
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - "flake-check/**"
+
+jobs:
+  webview-e2e:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        iteration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Webview E2E (iteration ${{ matrix.iteration }})
+        run: npm run test:e2e
+
+  vscode-integration:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        iteration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: node esbuild.mjs
+      - name: Integration tests (iteration ${{ matrix.iteration }})
+        run: xvfb-run -a npm run test:vscode
+
+  vscode-ui:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        iteration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: UI E2E (iteration ${{ matrix.iteration }})
+        run: xvfb-run -a npm run test:ui
