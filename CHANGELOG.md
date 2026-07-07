@@ -6,6 +6,20 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.1] — 2026-07-07
+
+### Fixed
+
+- **Workspace indexing skips hidden and build directories** — model files under
+  hidden directories (e.g. `.claude/worktrees/<branch>` git worktrees holding a
+  full repo copy on another branch, `.git`, …) and build outputs
+  (`node_modules` / `dist` / `build` / `out` / `test-results`) are no longer
+  added to the workspace index. Indexing a worktree copy made every top-level
+  element a false "duplicate" (global-scope collision) and could win name
+  resolution with a *stale* copy of a package, reporting false "unresolved"
+  references to members that only exist on the current branch. The MCP server
+  already skipped these directories; the extension now matches. (#42)
+
 ## [0.8.0] — 2026-07-07
 
 ### Fixed
@@ -181,7 +195,8 @@ support plus an interactive, editable diagram view.
   expression bodies are treated as opaque text and not type-checked.
 - Name resolution is an approximation (visibility is not fully enforced).
 
-[Unreleased]: https://github.com/engineer-fumi/sysml-v2-studio/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/engineer-fumi/sysml-v2-studio/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/engineer-fumi/sysml-v2-studio/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/engineer-fumi/sysml-v2-studio/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/engineer-fumi/sysml-v2-studio/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/engineer-fumi/sysml-v2-studio/compare/v0.6.0...v0.7.0
