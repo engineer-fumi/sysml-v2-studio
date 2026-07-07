@@ -6,6 +6,7 @@ import * as assert from "node:assert";
 import { SysMLElement, createElement, walk } from "../src/core/ast";
 import { parseSysML } from "../src/core/parser";
 import { Resolver } from "../src/core/resolve";
+import { Expr, parseExpression, collectExprRefs, pathAtOffset } from "../src/core/expr";
 
 let passed = 0;
 function test(title: string, fn: () => void): void {
@@ -264,6 +265,132 @@ test("resolves inherited members and conjugated ports", () => {
     find(root, "FuelPort"),
     "conjugated reference resolves to the base type"
   );
+});
+
+// ---- expressions ----------------------------------------------------------
+
+/** shorthand: parse an expression string into an AST */
+function expr(src: string): Expr {
+  return parseExpression(src);
+}
+
+test("expression operator precedence builds the right tree", () => {
+  const e = expr("1 + 2 * 3");
+  assert.strictEqual(e.kind, "binary");
+  assert.strictEqual((e as any).op, "+");
+  const right = (e as any).right;
+  assert.strictEqual(right.kind, "binary");
+  assert.strictEqual(right.op, "*", "* binds tighter than +");
+
+  // comparison is looser than arithmetic; `and` is looser than comparison
+  const cmp = expr("a + b < c and d");
+  assert.strictEqual((cmp as any).op, "and");
+  assert.strictEqual((cmp as any).left.op, "<");
+  assert.strictEqual((cmp as any).left.left.op, "+");
+
+  // ** is right-associative
+  const pow = expr("2 ** 3 ** 2");
+  assert.strictEqual((pow as any).right.kind, "binary");
+  assert.strictEqual((pow as any).right.op, "**");
+});
+
+test("expression navigation, invocation and indexing", () => {
+  const nav = expr("engine.fuelPort.flowRate");
+  assert.strictEqual(nav.kind, "nav");
+  assert.strictEqual((nav as any).member, "flowRate");
+  assert.strictEqual((nav as any).target.kind, "nav");
+
+  const call = expr("sum(masses, limit)");
+  assert.strictEqual(call.kind, "invoke");
+  assert.strictEqual((call as any).args.length, 2);
+
+  const collect = expr("masses->reduce { in x; in y; x + y }");
+  assert.strictEqual(collect.kind, "nav");
+  assert.strictEqual((collect as any).op, "->");
+
+  // KerML sequence indexing `seq#(i)` and numeric member `.1`
+  const idx = expr("vertices#(2)");
+  assert.strictEqual(idx.kind, "index");
+  assert.strictEqual((idx as any).args[0].value, "2");
+  assert.strictEqual(expr("tuple.1").kind, "nav");
+});
+
+test("expression conditional, classification and constructor", () => {
+  const cond = expr("if x > 0 ? a else b");
+  assert.strictEqual(cond.kind, "cond");
+  assert.strictEqual((cond as any).cond.op, ">");
+
+  const cls = expr("x istype Vehicle");
+  assert.strictEqual(cls.kind, "classify");
+  assert.strictEqual((cls as any).op, "istype");
+  assert.strictEqual((cls as any).type, "Vehicle");
+
+  const ctor = expr("new Translation(p)");
+  assert.strictEqual(ctor.kind, "unary");
+  assert.strictEqual((ctor as any).op, "new");
+  assert.strictEqual((ctor as any).operand.kind, "invoke");
+});
+
+test("value expressions are attached to elements with absolute ranges", () => {
+  const src = `package P {
+    attribute total = mass + fuelMass * 2;
+  }`;
+  const root = parseSysML(src).root;
+  const total = find(root, "total");
+  assert.ok(total.valueExpr, "valueExpr attached");
+  assert.strictEqual(total.valueExpr!.kind, "binary");
+  // a leaf name node must point back at the right source offset
+  const refs = collectExprRefs(total.valueExpr!);
+  const names = refs.map((r) => r.name).sort();
+  assert.deepStrictEqual(names, ["fuelMass", "mass"]);
+  const massRef = refs.find((r) => r.name === "mass")!;
+  assert.strictEqual(src.slice(massRef.start, massRef.end), "mass", "ref range is absolute");
+});
+
+test("unparseable expressions fall back to opaque", () => {
+  // a multi-statement function body is not a single expression
+  const e = expr("in x: Real; in y: Real; return : Real;");
+  assert.strictEqual(e.kind, "opaque");
+});
+
+test("pathAtOffset reconstructs the feature chain under the cursor", () => {
+  const src = "engine.fuelPort.flowRate";
+  const e = parseExpression(src);
+  // cursor on each segment yields the chain up to and including it
+  assert.strictEqual(pathAtOffset(e, src.indexOf("engine")), "engine");
+  assert.strictEqual(pathAtOffset(e, src.indexOf("fuelPort")), "engine.fuelPort");
+  assert.strictEqual(pathAtOffset(e, src.indexOf("flowRate")), "engine.fuelPort.flowRate");
+  // a classification type reference resolves as the type
+  const c = parseExpression("x istype Vehicle");
+  assert.strictEqual(pathAtOffset(c, "x istype ".length + 2), "Vehicle");
+});
+
+test("expression feature chains resolve member-by-member through types", () => {
+  const src = `package P {
+    port def FuelPort { attribute flowRate; }
+    part def Engine { port fuelPort : FuelPort; }
+    part def Car {
+      part engine : Engine;
+      attribute reading = engine.fuelPort.flowRate;
+    }
+  }`;
+  const file = parseSysML(src).root;
+  file.kind = "file";
+  const ns = createElement("namespace");
+  file.parent = ns;
+  ns.children.push(file);
+
+  const resolver = new Resolver(ns);
+  const reading = find(ns, "reading");
+  const flowRate = find(ns, "flowRate");
+
+  // the path reconstructed from the AST at the `flowRate` offset...
+  assert.ok(reading.valueExpr);
+  const at = src.indexOf("flowRate", src.indexOf("reading"));
+  const path = pathAtOffset(reading.valueExpr!, at);
+  assert.strictEqual(path, "engine.fuelPort.flowRate");
+  // ...resolves member-by-member through each step's type to the right member
+  assert.strictEqual(resolver.resolve(reading, path!), flowRate);
 });
 
 console.log(`ALL PARSER TESTS PASSED (${passed})`);
