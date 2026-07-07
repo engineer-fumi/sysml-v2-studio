@@ -188,6 +188,8 @@
     "test:ui": "node esbuild.mjs && extest setup-and-run './test/ui/*.test.js' --extensions_dir .test-extensions -o ./test/ui/settings.json",
     "gen:screenshots": "node esbuild.mjs && esbuild scripts/gen-demo-model.ts --bundle --platform=node --outfile=dist/gen-demo-model.cjs --log-level=error && node dist/gen-demo-model.cjs && node scripts/gen-screenshots.mjs",
     "test:unit": "npm run test:core && npm run test:geometry && npm run test:parser && npm run test:hooks && npm run test:fuzz && npm run test:mcp",
+    "corpus:clone": "node scripts/clone-corpus.mjs",
+    "coverage:grammar": "esbuild scripts/grammar-coverage.ts --bundle --platform=node --outfile=dist/grammar-coverage.cjs --log-level=error && node dist/grammar-coverage.cjs",
     "gen:icon": "node scripts/gen-icon.mjs",
     "test:vscode": "node test/runTest.mjs",
     "package": "npm run build && npm run build:mcp && vsce package --allow-missing-repository"

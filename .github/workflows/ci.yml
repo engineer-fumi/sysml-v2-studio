@@ -37,6 +37,23 @@ jobs:
       - name: Smoke test (initialize / tools/list / tools/call over stdio)
         run: node scripts/smoke-mcp.mjs
 
+  grammar-coverage:
+    runs-on: ubuntu-latest
+    needs: core
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # Network-dependent: if the clone fails the harness finds no corpus,
+      # prints SKIP and exits 0, so this job never blocks on outages.
+      - name: Clone the OMG corpus (shallow)
+        run: node scripts/clone-corpus.mjs || echo "clone failed — coverage will be skipped"
+      - name: Grammar coverage regression guard (parse errors vs baseline)
+        run: npm run coverage:grammar -- --check
+
   webview-e2e:
     runs-on: ubuntu-latest
     needs: core
