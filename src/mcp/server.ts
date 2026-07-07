@@ -15,7 +15,7 @@ import { ModelStore } from "./modelStore";
 import { TOOLS, runTool } from "./tools";
 
 const PROTOCOL_VERSION = "2024-11-05";
-const SERVER_INFO = { name: "sysml-v2-studio", version: "0.8.0" };
+const SERVER_INFO = { name: "sysml-v2-studio", version: "0.8.1" };
 
 const workspace = process.argv[2] || process.env.SYSML_WORKSPACE || process.cwd();
 const store = new ModelStore(workspace);
