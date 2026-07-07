@@ -7,6 +7,8 @@
  * usages, connections, flows, imports, specialization relationships ...).
  */
 
+import { Expr } from "./expr";
+
 export type ElementKind =
   | "namespace"
   | "file"
@@ -119,6 +121,8 @@ export interface SysMLElement {
   multiplicity?: string;
   /** Initial / bound value expression text after `=` or `:=`. */
   value?: string;
+  /** Structured AST of `value` (or a constraint / calc / expr body). */
+  valueExpr?: Expr;
   /** Direction prefix for features: in / out / inout. */
   direction?: "in" | "out" | "inout";
   /** Other modifier prefixes: abstract, variation, ref, readonly, derived ... */

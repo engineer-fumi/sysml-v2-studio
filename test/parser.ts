@@ -6,6 +6,7 @@ import * as assert from "node:assert";
 import { SysMLElement, createElement, walk } from "../src/core/ast";
 import { parseSysML } from "../src/core/parser";
 import { Resolver } from "../src/core/resolve";
+import { Expr, parseExpression, collectExprRefs } from "../src/core/expr";
 
 let passed = 0;
 function test(title: string, fn: () => void): void {
@@ -249,6 +250,92 @@ test("resolves inherited members and conjugated ports", () => {
     find(root, "FuelPort"),
     "conjugated reference resolves to the base type"
   );
+});
+
+// ---- expressions ----------------------------------------------------------
+
+/** shorthand: parse an expression string into an AST */
+function expr(src: string): Expr {
+  return parseExpression(src);
+}
+
+test("expression operator precedence builds the right tree", () => {
+  const e = expr("1 + 2 * 3");
+  assert.strictEqual(e.kind, "binary");
+  assert.strictEqual((e as any).op, "+");
+  const right = (e as any).right;
+  assert.strictEqual(right.kind, "binary");
+  assert.strictEqual(right.op, "*", "* binds tighter than +");
+
+  // comparison is looser than arithmetic; `and` is looser than comparison
+  const cmp = expr("a + b < c and d");
+  assert.strictEqual((cmp as any).op, "and");
+  assert.strictEqual((cmp as any).left.op, "<");
+  assert.strictEqual((cmp as any).left.left.op, "+");
+
+  // ** is right-associative
+  const pow = expr("2 ** 3 ** 2");
+  assert.strictEqual((pow as any).right.kind, "binary");
+  assert.strictEqual((pow as any).right.op, "**");
+});
+
+test("expression navigation, invocation and indexing", () => {
+  const nav = expr("engine.fuelPort.flowRate");
+  assert.strictEqual(nav.kind, "nav");
+  assert.strictEqual((nav as any).member, "flowRate");
+  assert.strictEqual((nav as any).target.kind, "nav");
+
+  const call = expr("sum(masses, limit)");
+  assert.strictEqual(call.kind, "invoke");
+  assert.strictEqual((call as any).args.length, 2);
+
+  const collect = expr("masses->reduce { in x; in y; x + y }");
+  assert.strictEqual(collect.kind, "nav");
+  assert.strictEqual((collect as any).op, "->");
+
+  // KerML sequence indexing `seq#(i)` and numeric member `.1`
+  const idx = expr("vertices#(2)");
+  assert.strictEqual(idx.kind, "index");
+  assert.strictEqual((idx as any).args[0].value, "2");
+  assert.strictEqual(expr("tuple.1").kind, "nav");
+});
+
+test("expression conditional, classification and constructor", () => {
+  const cond = expr("if x > 0 ? a else b");
+  assert.strictEqual(cond.kind, "cond");
+  assert.strictEqual((cond as any).cond.op, ">");
+
+  const cls = expr("x istype Vehicle");
+  assert.strictEqual(cls.kind, "classify");
+  assert.strictEqual((cls as any).op, "istype");
+  assert.strictEqual((cls as any).type, "Vehicle");
+
+  const ctor = expr("new Translation(p)");
+  assert.strictEqual(ctor.kind, "unary");
+  assert.strictEqual((ctor as any).op, "new");
+  assert.strictEqual((ctor as any).operand.kind, "invoke");
+});
+
+test("value expressions are attached to elements with absolute ranges", () => {
+  const src = `package P {
+    attribute total = mass + fuelMass * 2;
+  }`;
+  const root = parseSysML(src).root;
+  const total = find(root, "total");
+  assert.ok(total.valueExpr, "valueExpr attached");
+  assert.strictEqual(total.valueExpr!.kind, "binary");
+  // a leaf name node must point back at the right source offset
+  const refs = collectExprRefs(total.valueExpr!);
+  const names = refs.map((r) => r.name).sort();
+  assert.deepStrictEqual(names, ["fuelMass", "mass"]);
+  const massRef = refs.find((r) => r.name === "mass")!;
+  assert.strictEqual(src.slice(massRef.start, massRef.end), "mass", "ref range is absolute");
+});
+
+test("unparseable expressions fall back to opaque", () => {
+  // a multi-statement function body is not a single expression
+  const e = expr("in x: Real; in y: Real; return : Real;");
+  assert.strictEqual(e.kind, "opaque");
 });
 
 console.log(`ALL PARSER TESTS PASSED (${passed})`);
