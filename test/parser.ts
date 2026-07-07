@@ -199,6 +199,38 @@ test("parses SysML connection / flow / metadata / end forms", () => {
   assert.deepStrictEqual(find(r.root, "cart").multiplicity, "[1]", "end nested feature keeps its own multiplicity");
 });
 
+test("metadata about (bodyless / with body) and anonymous satisfy parse and resolve (#27 #28)", () => {
+  // both forms were rejected in v0.7.1 (reported by real-world models with
+  // hundreds of false errors) — pin them so they never regress again
+  const src = `package Probe {
+    enum def Lv { A; B; }
+    metadata def M { attribute level : Lv; }
+    part def T1;
+    part def T2;
+    metadata m1 : M about T1;
+    metadata m2 : M about T2 { :>> level = Lv::A; }
+    requirement def R1;
+    part def P {
+      satisfy requirement : R1;
+    }
+  }`;
+  assert.deepStrictEqual(parseSysML(src).errors, [], "both repro forms parse without error");
+  const root = model(src);
+  // #27: metadata usage with an `about` clause, bodyless and with a body
+  const m1 = find(root, "m1");
+  assert.deepStrictEqual(m1.typedBy, ["M"]);
+  assert.ok(m1.refs.some((x) => x.kind === "target" && x.name === "T1"), "about target recorded");
+  assert.ok(find(root, "m2").refs.some((x) => x.kind === "target" && x.name === "T2"));
+  // #28: anonymous satisfy typed by the requirement def
+  const p = find(root, "P");
+  const sat = p.children.find((c) => c.kind === "satisfy")!;
+  assert.ok(sat, "anonymous satisfy is a member of P");
+  assert.deepStrictEqual(sat.typedBy, ["R1"]);
+  // ...and the type reference resolves to the requirement def
+  const resolver = new Resolver(root);
+  assert.strictEqual(resolver.resolve(p, "R1"), find(root, "R1"), "satisfy target resolves");
+});
+
 test("captures expression bodies whole (lambdas, mixed statements)", () => {
   const r = parseSysML(`package P {
     calc total {
