@@ -496,6 +496,10 @@ class Parser {
     el.modifiers = modifiers;
     if (this.eat("all")) el.modifiers.push("all");
     el.target = this.qnameRef(el, "import", true);
+    // OMG import filter, e.g. `import P::**[@Safety];` — a metadata condition
+    // restricting which members are imported. Parse-only: consume the balanced
+    // `[ … ]` so it is accepted; the filter semantics are not applied.
+    while (this.at("[")) this.parseMultiplicity();
     this.parseBodyOrSemi(el);
     return el;
   }
