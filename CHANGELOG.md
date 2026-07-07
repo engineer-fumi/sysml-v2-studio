@@ -6,6 +6,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-07-07
+
 ### Fixed
 
 - **Control nodes and implicit action end points resolve** — `fork f;` /
@@ -14,8 +16,29 @@ project adheres to [Semantic Versioning](https://semver.org/).
   unresolvable). Bare `first start;` / `then done;` successions no longer
   report `unresolved` — `start` / `done` are the implicit action end
   points (`Actions::Action`). (#30)
+- Bodyless metadata `about` (`metadata m : M about T;`) and anonymous satisfy
+  with a type reference (`satisfy requirement : R;`) — both reported against
+  v0.7.1 — parse cleanly on this release (fixed by the grammar work below;
+  verified against the reported repros). (#27, #28)
 
 ### Added
+
+- **Expressions: structured AST, chain navigation and type checking** — values
+  and single-expression `constraint` / `calc` bodies now parse into an
+  expression AST (precedence parser following KerML `OwnedExpression`; **91.9%
+  of the value expressions** in the official OMG corpus). Go-to-definition and
+  hover resolve feature chains (`a.b.c`) member-by-member through each step's
+  type. A new **positive-knowledge type checker** flags constraint bodies that
+  cannot evaluate to Boolean and values that conflict with their feature's
+  declared scalar type — a type is only inferred when derivable from an
+  operator, a literal or a resolved scalar type, everything else stays
+  `unknown` and never produces a diagnostic (zero false positives across the
+  311-file OMG corpus). Configurable via `sysml.validation.typeChecking`
+  (default: warning); hover shows the inferred type. Expressions move from
+  **Parse-only** to **Partial** in the [conformance matrix](docs/conformance.md).
+- **Import filters parse** — metadata-conditioned imports
+  (`import P::**[@Safety];`) are accepted (parse-only; the filter semantics
+  are not applied).
 
 - **Expression bodies parse cleanly** — values and statements that mix balanced
   bodies with trailing operators (`a = parts->reduce { in s; in t; s + t } ?? 0;`,
@@ -158,7 +181,8 @@ support plus an interactive, editable diagram view.
   expression bodies are treated as opaque text and not type-checked.
 - Name resolution is an approximation (visibility is not fully enforced).
 
-[Unreleased]: https://github.com/engineer-fumi/sysml-v2-studio/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/engineer-fumi/sysml-v2-studio/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/engineer-fumi/sysml-v2-studio/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/engineer-fumi/sysml-v2-studio/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/engineer-fumi/sysml-v2-studio/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/engineer-fumi/sysml-v2-studio/releases/tag/v0.6.0
