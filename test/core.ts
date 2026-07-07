@@ -17,6 +17,7 @@ import { parseSysML } from "../src/core/parser";
 import { Resolver } from "../src/core/resolve";
 import { STDLIB_FILES } from "../src/core/stdlib";
 import { validateFile } from "../src/core/validate";
+import { isIgnoredModelPath } from "../src/extension/indexFilter";
 
 const SAMPLES_DIR = path.join(__dirname, "..", "samples");
 
@@ -319,6 +320,23 @@ test("moving one child does not shift its siblings", () => {
     Math.abs(c2After.x - x0) < 0.5 && Math.abs(c2After.y - y0) < 0.5,
     `sibling c2 must stay put (was ${x0},${y0}, got ${c2After.x},${c2After.y})`
   );
+});
+
+test("workspace index ignores hidden and build directories (#42)", () => {
+  // `.claude/worktrees/<branch>` holds a full repo copy on another branch —
+  // indexing it makes every top-level element a false duplicate and can win
+  // resolution with a stale package version
+  assert.strictEqual(isIgnoredModelPath(".claude/worktrees/x/pkg/a.sysml"), true);
+  assert.strictEqual(isIgnoredModelPath("sub/.git/pkg/a.sysml"), true);
+  assert.strictEqual(isIgnoredModelPath("node_modules/lib/a.sysml"), true);
+  assert.strictEqual(isIgnoredModelPath("dist/a.sysml"), true);
+  assert.strictEqual(isIgnoredModelPath(".claude\\worktrees\\x\\a.sysml"), true, "windows separators");
+  // normal model files stay indexed
+  assert.strictEqual(isIgnoredModelPath("phase-2/1_sysml/a.sysml"), false);
+  assert.strictEqual(isIgnoredModelPath("a.sysml"), false);
+  assert.strictEqual(isIgnoredModelPath("cross-phase/vocabulary.sysml"), false);
+  // relative traversal segments are not hidden dirs
+  assert.strictEqual(isIgnoredModelPath("../outside/a.sysml"), false);
 });
 
 console.log(`ALL CORE TESTS PASSED (${passed})`);
