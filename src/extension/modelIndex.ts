@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { ParseResult, SysMLElement, createElement, walk } from "../core/ast";
 import { parseSysML } from "../core/parser";
 import { STDLIB_FILES } from "../core/stdlib";
+import { isIgnoredModelPath } from "./indexFilter";
 
 export const BUILTIN_SCHEME = "sysml-builtin";
 
@@ -38,9 +39,12 @@ export class ModelIndex implements vscode.Disposable {
       this.setEntry(uri, lib.source, /*builtin*/ true);
     }
 
+    // exclude build outputs and *hidden* directories — `.claude/worktrees`
+    // holds full repo copies on other branches; indexing them duplicates every
+    // top-level element and can resolve names to a stale copy (see indexFilter)
     const uris = await vscode.workspace.findFiles(
       "**/*.{sysml,kerml}",
-      "**/{node_modules,dist,build,.git}/**"
+      "{**/node_modules/**,**/dist/**,**/build/**,**/out/**,**/test-results/**,**/.*/**}"
     );
     for (const uri of uris) {
       await this.indexUri(uri);
@@ -98,6 +102,8 @@ export class ModelIndex implements vscode.Disposable {
   }
 
   private async indexUri(uri: vscode.Uri): Promise<void> {
+    // the watcher glob has no exclude list — drop ignored paths before reading
+    if (isIgnoredModelPath(this.displayName(uri))) return;
     let source: string;
     try {
       const bytes = await vscode.workspace.fs.readFile(uri);
@@ -116,9 +122,10 @@ export class ModelIndex implements vscode.Disposable {
     const key = uri.toString();
     const prev = this.files.get(key);
     if (prev && prev.source === source) return prev;
+    const name = builtin ? uri.path.replace(/^\//, "") : this.displayName(uri);
     const entry: IndexedFile = {
       uri,
-      name: builtin ? uri.path.replace(/^\//, "") : this.displayName(uri),
+      name,
       fileId: prev?.fileId ?? this.nextFileId++,
       source,
       result: parseSysML(source),
@@ -128,7 +135,10 @@ export class ModelIndex implements vscode.Disposable {
     walk(entry.result.root, (el) => {
       el.fileId = entry.fileId;
     });
-    this.files.set(key, entry);
+    // an opened file inside an ignored directory (e.g. a `.claude/worktrees`
+    // copy) still gets a parsed entry for its own language features, but never
+    // joins the workspace-wide index (map) that resolution/diagnostics use
+    if (builtin || !isIgnoredModelPath(name)) this.files.set(key, entry);
     return entry;
   }
 

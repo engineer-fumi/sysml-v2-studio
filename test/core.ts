@@ -17,6 +17,7 @@ import { parseSysML } from "../src/core/parser";
 import { Resolver } from "../src/core/resolve";
 import { STDLIB_FILES } from "../src/core/stdlib";
 import { validateFile } from "../src/core/validate";
+import { isIgnoredModelPath } from "../src/extension/indexFilter";
 
 const SAMPLES_DIR = path.join(__dirname, "..", "samples");
 
@@ -115,6 +116,42 @@ test("all samples validate clean", () => {
     );
   }
   assert.ok(sampleFiles.length >= 17, `expected >= 17 sample files, got ${sampleFiles.length}`);
+});
+
+// type checking fires only on positive type knowledge
+function typeDiags(src: string): string[] {
+  const ns = createElement("namespace");
+  const f = parseSysML(src).root;
+  f.kind = "file";
+  f.name = "t.sysml";
+  f.parent = ns;
+  ns.children.push(f);
+  const resolver = new Resolver(ns);
+  return validateFile(f, resolver, {
+    unresolved: false, duplicates: false, conformance: false,
+    shadowing: false, importVisibility: false, typeChecking: true,
+  }).filter((d) => d.rule === "type").map((d) => d.message);
+}
+
+test("type checking flags non-Boolean constraint bodies and value mismatches", () => {
+  // a constraint body that evaluates to a number is wrong
+  assert.strictEqual(typeDiags(`part def C { attribute mass : Real; constraint x { mass + 1 } }`).length, 1);
+  // a Boolean comparison body is fine
+  assert.strictEqual(typeDiags(`part def C { attribute mass : Real; constraint x { mass < 1 } }`).length, 0);
+  // a number value assigned to a Boolean attribute conflicts
+  assert.strictEqual(typeDiags(`part def C { attribute flag : Boolean = 3; }`).length, 1);
+  // matching scalar families are fine
+  assert.strictEqual(typeDiags(`part def C { attribute n : Real = 5; }`).length, 0);
+  assert.strictEqual(typeDiags(`part def C { attribute s : String = "hi"; }`).length, 0);
+});
+
+test("type checking never fires on unknown / unresolved expressions", () => {
+  // an unresolved function call infers as unknown -> no false positive
+  assert.strictEqual(typeDiags(`part def C { constraint x { mysteryPredicate(thing) } }`).length, 0);
+  // a constraint over an unresolved name -> unknown -> no diagnostic
+  assert.strictEqual(typeDiags(`part def C { constraint x { whatever } }`).length, 0);
+  // a non-primitive declared type -> unknown declared type -> no diagnostic
+  assert.strictEqual(typeDiags(`part def C { attribute a : SomeType = 3; }`).length, 0);
 });
 
 test("every diagram kind lays out the combined model", () => {
@@ -283,6 +320,23 @@ test("moving one child does not shift its siblings", () => {
     Math.abs(c2After.x - x0) < 0.5 && Math.abs(c2After.y - y0) < 0.5,
     `sibling c2 must stay put (was ${x0},${y0}, got ${c2After.x},${c2After.y})`
   );
+});
+
+test("workspace index ignores hidden and build directories (#42)", () => {
+  // `.claude/worktrees/<branch>` holds a full repo copy on another branch —
+  // indexing it makes every top-level element a false duplicate and can win
+  // resolution with a stale package version
+  assert.strictEqual(isIgnoredModelPath(".claude/worktrees/x/pkg/a.sysml"), true);
+  assert.strictEqual(isIgnoredModelPath("sub/.git/pkg/a.sysml"), true);
+  assert.strictEqual(isIgnoredModelPath("node_modules/lib/a.sysml"), true);
+  assert.strictEqual(isIgnoredModelPath("dist/a.sysml"), true);
+  assert.strictEqual(isIgnoredModelPath(".claude\\worktrees\\x\\a.sysml"), true, "windows separators");
+  // normal model files stay indexed
+  assert.strictEqual(isIgnoredModelPath("phase-2/1_sysml/a.sysml"), false);
+  assert.strictEqual(isIgnoredModelPath("a.sysml"), false);
+  assert.strictEqual(isIgnoredModelPath("cross-phase/vocabulary.sysml"), false);
+  // relative traversal segments are not hidden dirs
+  assert.strictEqual(isIgnoredModelPath("../outside/a.sysml"), false);
 });
 
 console.log(`ALL CORE TESTS PASSED (${passed})`);

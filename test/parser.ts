@@ -6,6 +6,8 @@ import * as assert from "node:assert";
 import { SysMLElement, createElement, walk } from "../src/core/ast";
 import { parseSysML } from "../src/core/parser";
 import { Resolver } from "../src/core/resolve";
+import { validateFile } from "../src/core/validate";
+import { Expr, parseExpression, collectExprRefs, pathAtOffset } from "../src/core/expr";
 
 let passed = 0;
 function test(title: string, fn: () => void): void {
@@ -101,6 +103,21 @@ test("import visibility is recorded on the modifiers", () => {
   assert.strictEqual(imports[0].target, "A::*");
 });
 
+test("parses import filters (`import P::**[@Safety]`) without error", () => {
+  const r = parseSysML(`package P {
+    import Base::**[@Safety];
+    import A::*[@Critical and @Approved];
+    public import B::C[@Rationale] {
+      doc /* filtered import with a body */
+    }
+  }`);
+  assert.strictEqual(r.errors.length, 0, "no parse errors on import filters");
+  const imports = find(r.root, "P").children.filter((c) => c.kind === "import");
+  assert.strictEqual(imports.length, 3);
+  assert.strictEqual(imports[0].target, "Base::**");
+  assert.ok(imports[2].modifiers.includes("public"));
+});
+
 test("recovers from a syntax error and keeps later members", () => {
   const r = parseSysML(`package P {
     part def {;
@@ -182,6 +199,38 @@ test("parses SysML connection / flow / metadata / end forms", () => {
   assert.deepStrictEqual(find(r.root, "cart").multiplicity, "[1]", "end nested feature keeps its own multiplicity");
 });
 
+test("metadata about (bodyless / with body) and anonymous satisfy parse and resolve (#27 #28)", () => {
+  // both forms were rejected in v0.7.1 (reported by real-world models with
+  // hundreds of false errors) — pin them so they never regress again
+  const src = `package Probe {
+    enum def Lv { A; B; }
+    metadata def M { attribute level : Lv; }
+    part def T1;
+    part def T2;
+    metadata m1 : M about T1;
+    metadata m2 : M about T2 { :>> level = Lv::A; }
+    requirement def R1;
+    part def P {
+      satisfy requirement : R1;
+    }
+  }`;
+  assert.deepStrictEqual(parseSysML(src).errors, [], "both repro forms parse without error");
+  const root = model(src);
+  // #27: metadata usage with an `about` clause, bodyless and with a body
+  const m1 = find(root, "m1");
+  assert.deepStrictEqual(m1.typedBy, ["M"]);
+  assert.ok(m1.refs.some((x) => x.kind === "target" && x.name === "T1"), "about target recorded");
+  assert.ok(find(root, "m2").refs.some((x) => x.kind === "target" && x.name === "T2"));
+  // #28: anonymous satisfy typed by the requirement def
+  const p = find(root, "P");
+  const sat = p.children.find((c) => c.kind === "satisfy")!;
+  assert.ok(sat, "anonymous satisfy is a member of P");
+  assert.deepStrictEqual(sat.typedBy, ["R1"]);
+  // ...and the type reference resolves to the requirement def
+  const resolver = new Resolver(root);
+  assert.strictEqual(resolver.resolve(p, "R1"), find(root, "R1"), "satisfy target resolves");
+});
+
 test("captures expression bodies whole (lambdas, mixed statements)", () => {
   const r = parseSysML(`package P {
     calc total {
@@ -249,6 +298,171 @@ test("resolves inherited members and conjugated ports", () => {
     find(root, "FuelPort"),
     "conjugated reference resolves to the base type"
   );
+});
+
+test("control nodes parse as named members and resolve in successions", () => {
+  const root = model(`package A {
+    action def Y {
+      action m;
+      fork forkPoint;
+      first start;
+      then m;
+      then forkPoint;
+    }
+  }`);
+  const fk = find(root, "forkPoint");
+  assert.strictEqual(fk.kind, "action", "fork node is a named member");
+  assert.ok(fk.modifiers.includes("fork"), "fork keyword kept as modifier");
+  const resolver = new Resolver(root);
+  assert.strictEqual(
+    resolver.resolve(find(root, "Y"), "forkPoint"),
+    fk,
+    "succession target resolves to the fork node"
+  );
+});
+
+test("implicit start/done successions produce no unresolved diagnostics", () => {
+  const root = model(`package A {
+    action def X {
+      first start;
+      then action a;
+      then done;
+    }
+  }`);
+  const resolver = new Resolver(root);
+  const file = root.children[0];
+  const diags = validateFile(file, resolver).filter((d) => d.rule === "unresolved");
+  assert.deepStrictEqual(
+    diags.map((d) => d.message),
+    [],
+    "start/done are implicit action end points"
+  );
+});
+
+// ---- expressions ----------------------------------------------------------
+
+/** shorthand: parse an expression string into an AST */
+function expr(src: string): Expr {
+  return parseExpression(src);
+}
+
+test("expression operator precedence builds the right tree", () => {
+  const e = expr("1 + 2 * 3");
+  assert.strictEqual(e.kind, "binary");
+  assert.strictEqual((e as any).op, "+");
+  const right = (e as any).right;
+  assert.strictEqual(right.kind, "binary");
+  assert.strictEqual(right.op, "*", "* binds tighter than +");
+
+  // comparison is looser than arithmetic; `and` is looser than comparison
+  const cmp = expr("a + b < c and d");
+  assert.strictEqual((cmp as any).op, "and");
+  assert.strictEqual((cmp as any).left.op, "<");
+  assert.strictEqual((cmp as any).left.left.op, "+");
+
+  // ** is right-associative
+  const pow = expr("2 ** 3 ** 2");
+  assert.strictEqual((pow as any).right.kind, "binary");
+  assert.strictEqual((pow as any).right.op, "**");
+});
+
+test("expression navigation, invocation and indexing", () => {
+  const nav = expr("engine.fuelPort.flowRate");
+  assert.strictEqual(nav.kind, "nav");
+  assert.strictEqual((nav as any).member, "flowRate");
+  assert.strictEqual((nav as any).target.kind, "nav");
+
+  const call = expr("sum(masses, limit)");
+  assert.strictEqual(call.kind, "invoke");
+  assert.strictEqual((call as any).args.length, 2);
+
+  const collect = expr("masses->reduce { in x; in y; x + y }");
+  assert.strictEqual(collect.kind, "nav");
+  assert.strictEqual((collect as any).op, "->");
+
+  // KerML sequence indexing `seq#(i)` and numeric member `.1`
+  const idx = expr("vertices#(2)");
+  assert.strictEqual(idx.kind, "index");
+  assert.strictEqual((idx as any).args[0].value, "2");
+  assert.strictEqual(expr("tuple.1").kind, "nav");
+});
+
+test("expression conditional, classification and constructor", () => {
+  const cond = expr("if x > 0 ? a else b");
+  assert.strictEqual(cond.kind, "cond");
+  assert.strictEqual((cond as any).cond.op, ">");
+
+  const cls = expr("x istype Vehicle");
+  assert.strictEqual(cls.kind, "classify");
+  assert.strictEqual((cls as any).op, "istype");
+  assert.strictEqual((cls as any).type, "Vehicle");
+
+  const ctor = expr("new Translation(p)");
+  assert.strictEqual(ctor.kind, "unary");
+  assert.strictEqual((ctor as any).op, "new");
+  assert.strictEqual((ctor as any).operand.kind, "invoke");
+});
+
+test("value expressions are attached to elements with absolute ranges", () => {
+  const src = `package P {
+    attribute total = mass + fuelMass * 2;
+  }`;
+  const root = parseSysML(src).root;
+  const total = find(root, "total");
+  assert.ok(total.valueExpr, "valueExpr attached");
+  assert.strictEqual(total.valueExpr!.kind, "binary");
+  // a leaf name node must point back at the right source offset
+  const refs = collectExprRefs(total.valueExpr!);
+  const names = refs.map((r) => r.name).sort();
+  assert.deepStrictEqual(names, ["fuelMass", "mass"]);
+  const massRef = refs.find((r) => r.name === "mass")!;
+  assert.strictEqual(src.slice(massRef.start, massRef.end), "mass", "ref range is absolute");
+});
+
+test("unparseable expressions fall back to opaque", () => {
+  // a multi-statement function body is not a single expression
+  const e = expr("in x: Real; in y: Real; return : Real;");
+  assert.strictEqual(e.kind, "opaque");
+});
+
+test("pathAtOffset reconstructs the feature chain under the cursor", () => {
+  const src = "engine.fuelPort.flowRate";
+  const e = parseExpression(src);
+  // cursor on each segment yields the chain up to and including it
+  assert.strictEqual(pathAtOffset(e, src.indexOf("engine")), "engine");
+  assert.strictEqual(pathAtOffset(e, src.indexOf("fuelPort")), "engine.fuelPort");
+  assert.strictEqual(pathAtOffset(e, src.indexOf("flowRate")), "engine.fuelPort.flowRate");
+  // a classification type reference resolves as the type
+  const c = parseExpression("x istype Vehicle");
+  assert.strictEqual(pathAtOffset(c, "x istype ".length + 2), "Vehicle");
+});
+
+test("expression feature chains resolve member-by-member through types", () => {
+  const src = `package P {
+    port def FuelPort { attribute flowRate; }
+    part def Engine { port fuelPort : FuelPort; }
+    part def Car {
+      part engine : Engine;
+      attribute reading = engine.fuelPort.flowRate;
+    }
+  }`;
+  const file = parseSysML(src).root;
+  file.kind = "file";
+  const ns = createElement("namespace");
+  file.parent = ns;
+  ns.children.push(file);
+
+  const resolver = new Resolver(ns);
+  const reading = find(ns, "reading");
+  const flowRate = find(ns, "flowRate");
+
+  // the path reconstructed from the AST at the `flowRate` offset...
+  assert.ok(reading.valueExpr);
+  const at = src.indexOf("flowRate", src.indexOf("reading"));
+  const path = pathAtOffset(reading.valueExpr!, at);
+  assert.strictEqual(path, "engine.fuelPort.flowRate");
+  // ...resolves member-by-member through each step's type to the right member
+  assert.strictEqual(resolver.resolve(reading, path!), flowRate);
 });
 
 console.log(`ALL PARSER TESTS PASSED (${passed})`);

@@ -1,6 +1,6 @@
 # OMG SysML v2 conformance matrix
 
-> Target version: **v0.7.1** / Last updated: **2026-06-27**
+> Target version: **v0.8.0** / 最終更新: **2026-07-07**
 
 This extension implements a **practical subset** of OMG SysML v2 text notation. This
 page inventories which language areas are supported and to what degree, based on the
@@ -130,11 +130,21 @@ In `uc` diagram, use cases are ellipses; actors are hoisted outside boxes and li
 - `metadata def`
 - **Validation**: metadata annotations must refer to `metadata def` (`validate.ts`).
 
-### Expressions — Parse-only (opaque)
+### Expressions — Partial (AST + type check, no evaluation)
 
-Bodies of `constraint` / `calc`, `= expr` values, transition trigger / guard, `return`
+The value of `= expr` and the `constraint` / `calc` body of a single expression are structured into an AST (`valueExpr`) by a **priority parser** (`expr.ts`) that follows the KerML `OwnedExpression`. The raw text (`value`) is also preserved. **91.9%** of value expressions in the OMG official corpus are AST-generated (the remainder are complex sentence bodies like `in x:T; … return …;`, which are not single expressions and are therefore intentionally obscured).
+odies of `constraint` / `calc`, `= expr` values, transition trigger / guard, `return`
 expressions, etc. are **kept as raw text** (`captureBracedBody` / `captureUntil`). No
 expression AST, evaluation, or type-checking. This is an intentional design trade-off.
+
+- **Navigation**: The feature chain (`a.b.c`) reconstructs the path in the AST from the cursor position
+(`pathAtOffset`), traversing the type of each step and defining jump/hover resolution member by member.
+- **Type Checking** (`types.ts` `inferType` + `validate.ts` `type` rule): **Positive knowledge only** — Reports types only if they can be derived from operators (`<` → Boolean, `+` → number), literals, and the declared scalar type of resolved features. Anything uncertain is treated as `unknown` and **no diagnosis is issued**.
+(Zero false positives confirmed across all 311 files in the OMG corpus). Checked for: ① The constraint body must evaluate to Boolean,
+② The value must conform to the declared scalar type of the feature. Settings:
+`sysml.validation.typeChecking` (default: warning). Displays inferred types on hover.
+- **Limitations**: Expression **evaluation** (calculation of values) is not performed. Return type inference for calls / calc is `unknown`.
+(Intentionally conservative). Transition triggers / guards and compound statement action bodies are text as before.
 
 ### Imports / Aliases / Visibility — Partial (visibility approximate)
 
@@ -190,13 +200,14 @@ KerML definition keywords such as `classifier` / `feature` / `datatype` / `class
 
 ## Known limitations (summary)
 
-- **Expressions are opaque** — constraint / calc bodies, values, guard / trigger are text without type-checking.
-- **Visibility is approximate** — private / protected not enforced; only `public import` re-export reflected.
-- **Control flow is opaque** — `if` / `loop` / `accept` / `send` inside action / state are skipped as text.
-- **Standard library is minimal** — not the full OMG library.
-- **Diagram rename is declaration-only** — references do not follow.
-- **KerML foundation layer is parse-only** — defs, relationships, connectors, `inv` accepted syntactically;
-  no semantic validation or visualization; expression-level and some notations remain unsupported.
+- **Expressions are not evaluated** — Values ​​and single expression bodies are AST-generated + positive-knowledge type checking.
+(The return type of a call is `unknown`). Guards/triggers and compound statement bodies remain as text.
+- **Visibility is approximate** — private/protected is not enforced, only re-exports of `public import` are reflected.
+- **Control flow is opaque** — `if`/`loop`/`accept`/`send` etc. within action/state are read as text and skipped.
+- **Standard library is a minimal subset** — Not the complete OMG library.
+- **Diagram renaming is only done by declaration name** — References are not followed.
+- **KerML base layer is parse-only** — Syntax accepts definitions, relations, connectors, and `inv`, but
+semantic verification and visualization are not supported. Syntax remains unsupported at the expression level and for some notations.
 
 ## Related
 

@@ -1,8 +1,8 @@
 {
   "name": "sysml-v2-studio",
   "displayName": "SysML v2 Studio",
-  "description": "SysML v2 (.sysml / .kerml) authoring, visualization, and editing: language support, 8 editable diagram kinds, Claude (MCP) integration",
-  "version": "0.7.1",
+  "description": "SysML v2 (.sysml / .kerml) Authoring, visualization, and editing: Language support, 8 types of editable diagrams, and Claude (MCP) integration.
+  "version": "0.8.1",
   "publisher": "engineer-fumi",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -154,7 +154,18 @@
             "off"
           ],
           "default": "warning",
-          "description": "Diagnostic level when import visibility (public / private) is not declared"
+          "description": "Diagnostic level when the visibility (public/private) of an import is not explicitly specified"
+        },
+        "sysml.validation.typeChecking": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "information",
+            "off"
+          ],
+          "default": "warning",
+          "description": "The diagnostic level for type checking of an expression (e.g., constraint body is Boolean, value conforms to declared type, etc.). Only reports if the type is definitively determined."
         }
       }
     }
@@ -177,6 +188,8 @@
     "test:ui": "node esbuild.mjs && extest setup-and-run './test/ui/*.test.js' --extensions_dir .test-extensions -o ./test/ui/settings.json",
     "gen:screenshots": "node esbuild.mjs && esbuild scripts/gen-demo-model.ts --bundle --platform=node --outfile=dist/gen-demo-model.cjs --log-level=error && node dist/gen-demo-model.cjs && node scripts/gen-screenshots.mjs",
     "test:unit": "npm run test:core && npm run test:geometry && npm run test:parser && npm run test:hooks && npm run test:fuzz && npm run test:mcp",
+    "corpus:clone": "node scripts/clone-corpus.mjs",
+    "coverage:grammar": "esbuild scripts/grammar-coverage.ts --bundle --platform=node --outfile=dist/grammar-coverage.cjs --log-level=error && node dist/grammar-coverage.cjs",
     "gen:icon": "node scripts/gen-icon.mjs",
     "test:vscode": "node test/runTest.mjs",
     "package": "npm run build && npm run build:mcp && vsce package --allow-missing-repository"
