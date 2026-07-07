@@ -1,12 +1,14 @@
 import { SysMLElement, walk } from "./ast";
 import { Resolver } from "./resolve";
+import { inferType, typeOfElement, conflicts, typeLabel } from "./types";
 
 export type SemanticRule =
   | "unresolved"
   | "duplicate"
   | "conformance"
   | "shadowing"
-  | "importVisibility";
+  | "importVisibility"
+  | "type";
 
 export interface SemanticDiagnostic {
   message: string;
@@ -93,6 +95,7 @@ export interface ValidateOptions {
   conformance: boolean;
   shadowing: boolean;
   importVisibility: boolean;
+  typeChecking: boolean;
 }
 
 const DEFAULT_OPTIONS: ValidateOptions = {
@@ -101,7 +104,11 @@ const DEFAULT_OPTIONS: ValidateOptions = {
   conformance: true,
   shadowing: true,
   importVisibility: true,
+  typeChecking: true,
 };
+
+/** kinds whose body expression must evaluate to Boolean */
+const BOOLEAN_BODY_KINDS = new Set(["constraint", "constraint def"]);
 
 /** feature-like kinds that can shadow / redefine inherited members */
 const FEATURE_KINDS = new Set([
@@ -200,6 +207,34 @@ export function validateFile(
             message: `メタデータ注釈 '${ref.name}' は metadata def を参照する必要があります (実際は ${target.kind})`,
             start: ref.start,
             end: ref.end,
+          });
+        }
+      }
+    }
+
+    // ---- expression type checking (positive knowledge only) ----
+    if (options.typeChecking && el.valueExpr && el.valueExpr.kind !== "opaque") {
+      // a constraint body must evaluate to Boolean
+      if (BOOLEAN_BODY_KINDS.has(el.kind)) {
+        const t = inferType(el.valueExpr, el, resolver);
+        if (t.kind === "number" || t.kind === "string") {
+          out.push({
+            rule: "type",
+            message: `制約本体は Boolean に評価される必要があります (推論結果: ${typeLabel(t)})`,
+            start: el.valueExpr.start,
+            end: el.valueExpr.end,
+          });
+        }
+      } else if (el.typedBy.length) {
+        // a value must conform to the feature's declared (scalar) type
+        const declared = typeOfElement(el, scope, resolver);
+        const valueType = inferType(el.valueExpr, el, resolver);
+        if (conflicts(declared, valueType)) {
+          out.push({
+            rule: "type",
+            message: `${el.name ?? "値"} の型 ${typeLabel(declared)} に ${typeLabel(valueType)} の値は適合しません`,
+            start: el.valueExpr.start,
+            end: el.valueExpr.end,
           });
         }
       }
