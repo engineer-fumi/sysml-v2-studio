@@ -1,0 +1,80 @@
+name: "🤖 Loop task"
+description: "ローカルの Claude Code ループが自動着手できる、機械可読なタスク"
+title: "[loop] "
+labels: ["loop:ready"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        このテンプレートは **`/loop-task` コマンド（ローカルの Claude Code ループ）** が
+        着手するための作業単位です。ループは `loop:ready` の Issue を優先度順に1件ずつ拾い、
+        下記の「完了条件」と「検証コマンド」を満たす PR を作って `loop:needs-review` に遷移させます。
+        運用の詳細は [`docs/loop-engineering.md`](../blob/main/docs/loop-engineering.md) を参照。
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: ゴール (Why / What)
+      description: 何を達成したいか。背景・動機を1〜3文で。
+      placeholder: KerML の import filter `import p::**[@Safety]` をパースできるようにする。現状 parse error になり stdlib の一部が読み飛ばされる。
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 完了条件 (Done-when / 受け入れ基準)
+      description: 客観的にチェックできる箇条書き。これが満たされたら PR を出してよい。
+      placeholder: |
+        - [ ] `import p::**[@Safety]` を含む入力が parse error 0 になる
+        - [ ] test/parser.ts に回帰テストを追加
+        - [ ] 計測 harness の parse error 数が悪化しない（32 以下を維持）
+    validations:
+      required: true
+
+  - type: textarea
+    id: verify
+    attributes:
+      label: 検証コマンド (Verify)
+      description: ループが PR 前に必ず通す npm スクリプト等。1行1コマンド。
+      placeholder: |
+        npm run check
+        npm run test:parser
+        npm run test:fuzz
+      value: |
+        npm run check
+        npm run test:unit
+    validations:
+      required: true
+
+  - type: input
+    id: depends
+    attributes:
+      label: 依存 (Depends-on)
+      description: 先にマージされるべき Issue/PR 番号（あれば）。未解決の間ループはスキップします。
+      placeholder: "#21, #22"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 優先度
+      description: ループはこの順で拾います。あとで `loop:p1/p2/p3` ラベルに反映してください。
+      options:
+        - "p2 (中)"
+        - "p1 (高)"
+        - "p3 (低)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: pointers
+    attributes:
+      label: 実装の手がかり (Pointers)
+      description: 触るべきファイル・関数・参照仕様など（任意）。
+      placeholder: |
+        - src/core/parser.ts: import 句の処理（`parseImport` 付近）
+        - 参照: OMG SysML-textual-bnf.kebnf の ImportDeclaration
+    validations:
+      required: false
