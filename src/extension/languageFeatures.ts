@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { SysMLElement, elementLabel, qualifiedName } from "../core/ast";
+import { pathAtOffset } from "../core/expr";
 import { KEYWORDS } from "../core/lexer";
 import { Resolver } from "../core/resolve";
 import { SemanticRule, validateFile } from "../core/validate";
@@ -309,16 +310,23 @@ export function registerDefinition(
   const provider: vscode.DefinitionProvider = {
     async provideDefinition(doc, position) {
       const word = wordAt(doc, position);
-      if (!word) return undefined;
       const offsetAtCursor = doc.offsetAt(position);
 
       // scope-aware resolution first: the same name may be declared in
       // several packages, so resolve from the element under the cursor
       const entry = index.get(doc.uri) ?? index.indexDocument(doc);
       const scope = elementAt(entry.result.root, offsetAtCursor);
+      // inside a value/body expression, follow the feature chain the cursor is
+      // on (`a.b.c`) instead of the bare word, so chain members resolve to the
+      // right member of each step's type
+      const exprPath = scope?.valueExpr
+        ? pathAtOffset(scope.valueExpr, offsetAtCursor)
+        : undefined;
+      const name = exprPath ?? word;
+      if (!name) return undefined;
       if (scope) {
         const resolver = new Resolver(index.combinedRoot(true));
-        const resolved = resolver.resolve(scope, word);
+        const resolved = resolver.resolve(scope, name);
         if (resolved?.fileId !== undefined && resolved.nameStart !== undefined) {
           const file = index.getByFileId(resolved.fileId);
           const onOwnDecl =
@@ -338,8 +346,10 @@ export function registerDefinition(
         }
       }
 
-      // fallback: all declarations with that name across the workspace
-      const decls = index.findDeclarations(word);
+      // fallback: all declarations with that name across the workspace.
+      // Use the last segment of a feature chain (the member actually clicked).
+      const lastSeg = name.split(/::|\./).pop();
+      const decls = lastSeg ? index.findDeclarations(lastSeg) : [];
       const locations: vscode.Location[] = [];
       for (const { file, el } of decls) {
         // skip the declaration the cursor is already on
@@ -393,9 +403,21 @@ export function registerHover(
       );
       if (el.doc) md.appendMarkdown("\n" + el.doc);
 
-      // also show the doc of the referenced type
+      // also describe the reference the cursor is on. Inside an expression,
+      // follow the feature chain so chain members resolve precisely.
       const word = wordAt(doc, position);
-      if (word && word !== el.name) {
+      const exprPath = el.valueExpr ? pathAtOffset(el.valueExpr, offset) : undefined;
+      if (exprPath) {
+        const resolver = new Resolver(index.combinedRoot(true));
+        const ref = resolver.resolve(el, exprPath);
+        if (ref && ref !== el) {
+          md.appendMarkdown(
+            `\n\n---\n**${exprPath}** (${ref.kind} ${qualifiedName(ref)})` +
+              (ref.typedBy.length ? ` : ${ref.typedBy.join(", ")}` : "") +
+              (ref.doc ? `\n\n${ref.doc}` : "")
+          );
+        }
+      } else if (word && word !== el.name) {
         const decl = index.findDeclarations(word)[0];
         if (decl?.el.doc) {
           md.appendMarkdown(`\n\n---\n**${word}** (${decl.el.kind}): ${decl.el.doc}`);
