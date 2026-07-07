@@ -1,205 +1,204 @@
-# OMG SysML v2 対応範囲 (conformance matrix)
+# OMG SysML v2 conformance matrix
 
-> 対象バージョン: **v0.7.1** / 最終更新: **2026-06-27**
+> Target version: **v0.7.1** / Last updated: **2026-06-27**
 
-本拡張は OMG SysML v2 テキスト記法の**実用サブセット**を実装しています。この
-ページは「どの言語領域を、どこまで扱えるか」をコードに基づいて棚卸ししたものです。
-各レベルの根拠となるソースをそのまま示しているので、過大申告はありません。曖昧な
-領域は Partial / Parse-only / None を明示しています。
+This extension implements a **practical subset** of OMG SysML v2 text notation. This
+page inventories which language areas are supported and to what degree, based on the
+code. Source evidence is cited directly to avoid overclaiming. Ambiguous areas are
+marked Partial / Parse-only / None explicitly.
 
-## 対応レベルの定義
+## Conformance levels
 
-| レベル | 意味 |
+| Level | Meaning |
 |---|---|
-| **Full** | パースし、意味検証(型整合・解決など)を行い、図に可視化する |
-| **Partial** | パースし一部を検証/可視化するが、内部(式・効果・制御フロー本体)は不透明テキストとして扱う |
-| **Parse-only** | 構文として受理する(エラーにしない)が、検証・可視化はしない |
-| **None** | 未対応(エラー回復で読み飛ばす) |
+| **Full** | Parsed, semantically validated (type conformance, resolution, etc.), and visualized in diagrams |
+| **Partial** | Parsed and partly validated/visualized; internals (expressions, effects, control-flow bodies) are opaque text |
+| **Parse-only** | Accepted syntactically (not an error) but not validated or visualized |
+| **None** | Not supported (skipped via error recovery) |
 
-> ⚠️ ここで「対応」と書けるのは、実際に**パース / 検証 / 可視化できる**ものだけです。
-> 未対応の構文はパーサのエラー回復(`src/core/parser.ts` の `recover()`)で読み飛ばす
-> ため、部分的なモデルでも全体は動作します。
+> ⚠️ "Supported" here means only what can actually be **parsed / validated / visualized**.
+> Unsupported syntax is skipped by the parser's error recovery (`recover()` in
+> `src/core/parser.ts`), so partially valid models still work overall.
 
-## 要約
+## Summary
 
-| 言語領域 | 対応レベル | 根拠 (コード) |
+| Language area | Level | Evidence (code) |
 |---|---|---|
-| Definitions & Usages (part / item / attribute / port / action / state / …) | **Full** | `parser.ts` `DEF_KINDS`、`validate.ts` `TYPE_CONFORMANCE`、`viewSpecs.ts` `BOX_KINDS`/`TEXT_KINDS` |
-| Specialization (`:>` subsets / `:>>` redefines / `specializes` / `subsets` / `redefines` / `::>` references) | **Full** | `parser.ts` `parseDeclarationTail`、`validate.ts` `KIND_GROUP` + shadowing 検出 |
-| Connections / Interfaces / Bindings / Flows | **Full**(構造) | `parser.ts` `parseConnectBody`/`parseBind`/`parseFlow`、`viewSpecs.ts` `isEdgeElement` |
-| States & Transitions (trigger / guard / effect) | **Partial** | `parser.ts` `parseTransition`(trigger/guard はテキスト、`do` 効果は破棄) |
-| Actions / Calc / Successions | **Partial** | `parser.ts`(制御フロー文は `parseOpaqueStatement` で不透明) |
-| Requirements / Constraints / satisfy・verify | **Full**(構造)/ 式は不透明 | `parser.ts` `parseReferenceUsage`、`viewSpecs.ts` `req` の `refEdges` |
-| Use Cases / Actors / include・perform | **Full** | `parser.ts` `parseReferenceUsage`、`viewSpecs.ts` `uc`(`hoistActors`) |
-| Views / Viewpoints / Rendering / expose | **Partial** | `viewSpecs.ts` `view`/`viewpoint`/`rendering` は box 化、`expose`/`render` はレンダリング非実装 |
-| Metadata / Annotations (`@`, `#`, `metadata def`) | **Full**(パース) | `parser.ts` `@`/`#` 処理、`validate.ts` metadata ref チェック |
-| Expressions(constraint / calc 本体・値・guard など) | **Parse-only(不透明)** | `parser.ts` `captureBracedBody`/`captureUntil`(型チェックなし) |
-| Imports / Aliases / Visibility (public / private) | **Partial**(可視性は近似) | `parser.ts` `parseImport`/`parseAlias`、`resolve.ts`(private/protected 非強制) |
-| Comments / Documentation (`//`, `/* */`, `doc`, `comment`) | **Full** | `lexer.ts`、`parser.ts` `parseDoc`/`parseComment` |
-| Standard Library | **最小サブセット同梱** | `stdlib.ts` `STDLIB_FILES`(完全な OMG ライブラリではない) |
-| KerML 基盤層 (classifier / feature / datatype / function / predicate …) | **Parse-only** | `lexer.ts` `KEYWORDS`(KerML 語彙)、`parser.ts` `KERML_KINDS` + 関係節・コネクタ。意味検証・可視化は未対応 |
+| Definitions & Usages (part / item / attribute / port / action / state / …) | **Full** | `parser.ts` `DEF_KINDS`, `validate.ts` `TYPE_CONFORMANCE`, `viewSpecs.ts` `BOX_KINDS`/`TEXT_KINDS` |
+| Specialization (`:>` subsets / `:>>` redefines / `specializes` / `subsets` / `redefines` / `::>` references) | **Full** | `parser.ts` `parseDeclarationTail`, `validate.ts` `KIND_GROUP` + shadowing detection |
+| Connections / Interfaces / Bindings / Flows | **Full** (structure) | `parser.ts` `parseConnectBody`/`parseBind`/`parseFlow`, `viewSpecs.ts` `isEdgeElement` |
+| States & Transitions (trigger / guard / effect) | **Partial** | `parser.ts` `parseTransition` (trigger/guard as text; `do` effects discarded) |
+| Actions / Calc / Successions | **Partial** | `parser.ts` (control-flow statements opaque via `parseOpaqueStatement`) |
+| Requirements / Constraints / satisfy / verify | **Full** (structure) / expressions opaque | `parser.ts` `parseReferenceUsage`, `viewSpecs.ts` `req` `refEdges` |
+| Use Cases / Actors / include / perform | **Full** | `parser.ts` `parseReferenceUsage`, `viewSpecs.ts` `uc` (`hoistActors`) |
+| Views / Viewpoints / Rendering / expose | **Partial** | `viewSpecs.ts` boxes `view`/`viewpoint`/`rendering`; `expose`/`render` rendering not implemented |
+| Metadata / Annotations (`@`, `#`, `metadata def`) | **Full** (parse) | `parser.ts` `@`/`#` handling, `validate.ts` metadata ref check |
+| Expressions (constraint / calc bodies, values, guards, etc.) | **Parse-only (opaque)** | `parser.ts` `captureBracedBody`/`captureUntil` (no type-checking) |
+| Imports / Aliases / Visibility (public / private) | **Partial** (visibility approximate) | `parser.ts` `parseImport`/`parseAlias`, `resolve.ts` (private/protected not enforced) |
+| Comments / Documentation (`//`, `/* */`, `doc`, `comment`) | **Full** | `lexer.ts`, `parser.ts` `parseDoc`/`parseComment` |
+| Standard Library | **Minimal bundled subset** | `stdlib.ts` `STDLIB_FILES` (not the full OMG library) |
+| KerML foundation layer (classifier / feature / datatype / function / predicate …) | **Parse-only** | `lexer.ts` `KEYWORDS` (KerML vocabulary), `parser.ts` `KERML_KINDS` + relationship clauses / connectors. No semantic validation or visualization |
 
 ---
 
-## 詳細
+## Details
 
 ### Definitions & Usages — Full
 
-`part` / `attribute` / `port` / `item` / `action` / `state` / `requirement` /
-`constraint` / `interface` / `connection` / `allocation` / `analysis` /
+Each `def` and usage for `part` / `attribute` / `port` / `item` / `action` / `state` /
+`requirement` / `constraint` / `interface` / `connection` / `allocation` / `analysis` /
 `verification` / `concern` / `view` / `viewpoint` / `rendering` / `enum` /
-`occurrence` / `metadata` / `calc` / `case` / `flow` の各 `def` とその usage
-(`parser.ts` の `DEF_KINDS`)。`use case [def]` は複合キーワード、`individual def`
-は `occurrence def` として扱われます。`objective` は `requirement` 扱い。
+`occurrence` / `metadata` / `calc` / `case` / `flow` (`DEF_KINDS` in `parser.ts`).
+`use case [def]` is a compound keyword; `individual def` is treated as `occurrence def`.
+`objective` is treated as `requirement`.
 
-- **検証**: usage の型付けが正しい def 種別かを `TYPE_CONFORMANCE`(`validate.ts`)で
-  チェック(例: `part` は `part def` / `occurrence def` で型付け)。
-- **可視化**: `BOX_KINDS` のものはネストした箱、`TEXT_KINDS` のものは親箱内のテキスト行
-  (`viewSpecs.ts`)。
-- 各 usage には方向(`in` / `out` / `inout`)・多重度(`[n..m]`)・修飾子
-  (`abstract` / `variation` / `readonly` / `derived` / `ordered` / `nonunique` …)が付与可能。
+- **Validation**: `TYPE_CONFORMANCE` (`validate.ts`) checks usage typing against the
+  correct def kind (e.g. `part` typed by `part def` / `occurrence def`).
+- **Visualization**: `BOX_KINDS` render as nested boxes; `TEXT_KINDS` as text lines inside
+  parent boxes (`viewSpecs.ts`).
+- Each usage may have direction (`in` / `out` / `inout`), multiplicity (`[n..m]`), and
+  modifiers (`abstract` / `variation` / `readonly` / `derived` / `ordered` / `nonunique` …).
 
 ### Specialization — Full
 
-`:` / `defined by`(型付け)、`:>` / `specializes` / `subsets`(特化)、
-`:>>` / `redefines`(再定義)、`::>` / `references`(参照特化)。
-`parser.ts` `parseDeclarationTail` でパースし、`def` 同士の特化は `KIND_GROUP`
-(`validate.ts`)で**種類グループの一致**を検証します(例: structure 系は structure 系のみ)。
-継承メンバーを同名で隠している場合は shadowing として検出し `:>>` を提案します。
+`:` / `defined by` (typing), `:>` / `specializes` / `subsets` (specialization),
+`:>>` / `redefines` (redefinition), `::>` / `references` (reference specialization).
+Parsed in `parser.ts` `parseDeclarationTail`; specialization between defs is validated
+for **kind-group match** via `KIND_GROUP` (`validate.ts`) (e.g. structure to structure only).
+Shadowing of inherited members is detected and `:>>` is suggested.
 
-### Connections / Interfaces / Bindings / Flows — Full(構造)
+### Connections / Interfaces / Bindings / Flows — Full (structure)
 
-- `connect a.b to c.d` / `connect (a, b, c)`、`connection [name] [: T] connect …`
+- `connect a.b to c.d` / `connect (a, b, c)`, `connection [name] [: T] connect …`
 - `bind x = y` / `binding b bind x = y`
-- `flow [name] [of Item] from a.b to c.d`、`message`、`succession flow`
-- `interface` / `allocation` も接続として扱い、2 端以上を持つものはエッジ化(`isEdgeElement`)。
-- **検証**: フローの端はドット記法で要素内のフィーチャを指すべき、という近似チェックあり
-  (`validate.ts` の `flow` 分岐)。
-- 端のパス(`engine.fuelPort`)は解決対象として参照に追加されます。
+- `flow [name] [of Item] from a.b to c.d`, `message`, `succession flow`
+- `interface` / `allocation` treated as connections; those with 2+ ends become edges (`isEdgeElement`).
+- **Validation**: approximate check that flow ends should use dot notation for features
+  inside elements (`validate.ts` `flow` branch).
+- End paths (`engine.fuelPort`) are added as references for resolution.
 
 ### States & Transitions — Partial
 
-`state def` / `state`、`transition` / `succession` / `first … then …`、状態内の
-`entry` / `exit` / `do` アクション。`transition` は source / target / trigger
-(`accept …`) / guard(`if …`)を保持します。
+`state def` / `state`, `transition` / `succession` / `first … then …`, `entry` / `exit` /
+`do` actions inside states. `transition` retains source / target / trigger (`accept …`) /
+guard (`if …`).
 
-- **限界**: trigger / guard は**テキストとして保持**するだけで型チェックしません。
-  遷移の効果(`do send … via …`)は不透明テキストとして取り込み、構造化しません。
-- **可視化**: `state` 図で状態を箱、`transition` をエッジとして描画(`viewSpecs.ts` `state`)。
+- **Limits**: trigger / guard are **kept as text only**; no type-checking. Transition
+  effects (`do send … via …`) are opaque text, not structured.
+- **Visualization**: `state` diagram shows states as boxes, `transition` as edges (`viewSpecs.ts` `state`).
 
 ### Actions / Calc / Successions — Partial
 
-`action def` / `action`、`calc def` / `calc`、`succession`、状態/アクション本体の
-ステップ。
+`action def` / `action`, `calc def` / `calc`, `succession`, steps inside state/action bodies.
 
-- **限界**: 制御フロー文 — `accept` / `send` / `assign` / `if` / `while` / `loop` /
-  `for` / `merge` / `decide` / `fork` / `join` / `return` / `else` / `until` /
-  `terminate` / `assert` / `assume` / `require` — は `parseOpaqueStatement`
-  (`parser.ts`)で**不透明テキスト**として読み飛ばし、データ/制御フローのセマンティクスは
-  構築しません。`calc` 本体も式として不透明です。
-- **可視化**: `action` 図でアクションを箱、`succession` / `flow` / `transition` を
-  エッジとして描画。
+- **Limits**: control-flow statements — `accept` / `send` / `assign` / `if` / `while` /
+  `loop` / `for` / `merge` / `decide` / `fork` / `join` / `return` / `else` / `until` /
+  `terminate` / `assert` / `assume` / `require` — are skipped as **opaque text** via
+  `parseOpaqueStatement` (`parser.ts`); data/control-flow semantics are not built. `calc`
+  bodies are opaque expressions.
+- **Visualization**: `action` diagram shows actions as boxes; `succession` / `flow` /
+  `transition` as edges.
 
-### Requirements / Constraints / satisfy・verify — Full(構造)/ 式は不透明
+### Requirements / Constraints / satisfy / verify — Full (structure) / expressions opaque
 
-`requirement [def]` / `constraint [def]` / `concern [def]`、`satisfy` / `verify`
-(内部的には `satisfy` 種別)、`assert constraint`、`objective`。
+`requirement [def]` / `constraint [def]` / `concern [def]`, `satisfy` / `verify`
+(internally `satisfy` kind), `assert constraint`, `objective`.
 
-- **限界**: `constraint` / `calc` の `{ … }` 本体は**式として不透明**(`captureBracedBody`)。
-  `require` / `assume` / `assert` 文も不透明。
-- **可視化**: `req` 図で要求を箱、`satisfy` を参照エッジ(`refEdges`)、`doc` を本文行として描画。
+- **Limits**: `{ … }` bodies of `constraint` / `calc` are **opaque expressions**
+  (`captureBracedBody`). `require` / `assume` / `assert` statements are opaque.
+- **Visualization**: `req` diagram boxes requirements, `satisfy` as reference edges (`refEdges`),
+  `doc` as body lines.
 
-### Use Cases / Actors / include・perform — Full
+### Use Cases / Actors / include / perform — Full
 
-`use case [def]` / `case [def]`、`perform` / `include`(`perform` 種別)、
-`actor` 修飾子。`uc` 図ではユースケースを楕円、actor をボックス外へ引き出して
-関連線で結びます(`hoistActors`)。`exhibit state`(状態の提示)も対応。
+`use case [def]` / `case [def]`, `perform` / `include` (`perform` kind), `actor` modifier.
+In `uc` diagram, use cases are ellipses; actors are hoisted outside boxes and linked
+(`hoistActors`). `exhibit state` is also supported.
 
 ### Views / Viewpoints / Rendering — Partial
 
-`view [def]` / `viewpoint [def]` / `rendering [def]` は宣言としてパースし箱に
-描画します。`expose`(import 類似の参照)もパースします。
+`view [def]` / `viewpoint [def]` / `rendering [def]` are parsed and drawn as boxes.
+`expose` (import-like reference) is parsed.
 
-- **限界**: ビューの**実レンダリング**(`expose … ; render as …;` によるビュー計算)は
-  実装していません。`render` / `rep` / `frame` などは不透明文として扱います。
+- **Limits**: **actual view rendering** (`expose … ; render as …;` view computation) is
+  not implemented. `render` / `rep` / `frame` etc. are opaque statements.
 
-### Metadata / Annotations — Full(パース)
+### Metadata / Annotations — Full (parse)
 
-- `@Metadata`(メタデータ注釈 usage、`about` 対象付き)
-- `#metadata`(プレフィックス注釈、次の要素に付与)
+- `@Metadata` (metadata annotation usage, with `about` target)
+- `#metadata` (prefix annotation on the next element)
 - `metadata def`
-- **検証**: メタデータ注釈が `metadata def` を参照しているかをチェック(`validate.ts`)。
+- **Validation**: metadata annotations must refer to `metadata def` (`validate.ts`).
 
-### Expressions — Parse-only(不透明)
+### Expressions — Parse-only (opaque)
 
-`constraint` / `calc` の本体、`= expr` の値、遷移の trigger / guard、`return` などの
-式は**生のテキストとして保持**するだけです(`captureBracedBody` / `captureUntil`)。
-式の構文木構築・評価・型チェックは行いません。これは設計上の割り切りです。
+Bodies of `constraint` / `calc`, `= expr` values, transition trigger / guard, `return`
+expressions, etc. are **kept as raw text** (`captureBracedBody` / `captureUntil`). No
+expression AST, evaluation, or type-checking. This is an intentional design trade-off.
 
-### Imports / Aliases / Visibility — Partial(可視性は近似)
+### Imports / Aliases / Visibility — Partial (visibility approximate)
 
-- `import P::*` / `import P::**`(再帰)/ `import all` / `import P::X`、`alias A for B`。
-- `public import` は名前解決で**推移的に再エクスポート**されます(`resolve.ts` `lookupExported`)。
-- **限界**: 可視性(`private` / `protected`)は名前解決で**強制されません**
-  (`resolve.ts` 冒頭コメント参照)。private import は再エクスポートされない、という点のみ反映。
-- import に可視性が明示されていない場合は lint 警告(`importVisibility`、`validate.ts`)。
+- `import P::*` / `import P::**` (recursive) / `import all` / `import P::X`, `alias A for B`.
+- `public import` is **transitively re-exported** in name resolution (`resolve.ts` `lookupExported`).
+- **Limits**: visibility (`private` / `protected`) is **not enforced** in resolution
+  (see `resolve.ts` header comment). Only private import not being re-exported is reflected.
+- Lint warning when import lacks explicit visibility (`importVisibility`, `validate.ts`).
 
 ### Comments / Documentation — Full
 
-`//` 行コメント、`/* … */` ブロックコメント、`doc /* … */`、`comment … about …`。
-`doc` は要素に添付され、ホバー・要求図の本文に表示されます。
+`//` line comments, `/* … */` block comments, `doc /* … */`, `comment … about …`.
+`doc` attaches to elements and appears in hover and requirement diagram bodies.
 
-### Standard Library — 最小サブセット同梱
+### Standard Library — minimal bundled subset
 
-`stdlib.ts` の `STDLIB_FILES` として 3 ファイルを同梱:
+Three files bundled as `STDLIB_FILES` in `stdlib.ts`:
 
 - **ScalarValues** — `ScalarValue` / `Boolean` / `String` / `Number` / `Real` /
-  `Integer` / `Natural` / `Positive` ほか
-- **Base 系** — `Base` / `Items` / `Parts` / `Ports` / `Actions` / `States` /
+  `Integer` / `Natural` / `Positive`, etc.
+- **Base packages** — `Base` / `Items` / `Parts` / `Ports` / `Actions` / `States` /
   `Connections` / `Interfaces` / `Allocations` / `Constraints` / `Requirements` /
   `Calculations` / `Cases` / `AnalysisCases` / `VerificationCases` / `UseCases` /
   `Views` / `Metaobjects` / `Flows` / `Occurrences`
-- **Quantities 系** — `Quantities` / `ISQ`(質量・長さ・時間 … の値型と usage)/
-  `SI`(kg / m / s / A / K …)/ `Time` / `MeasurementReferences` / `SIPrefixes` /
-  `ModelingMetadata`(`StatusInfo` / `Risk` / `Rationale` …)/ `RequirementDerivation`
+- **Quantities** — `Quantities` / `ISQ` (value types and usages for mass, length, time, …) /
+  `SI` (kg / m / s / A / K …) / `Time` / `MeasurementReferences` / `SIPrefixes` /
+  `ModelingMetadata` (`StatusInfo` / `Risk` / `Rationale` …) / `RequirementDerivation`
 
-import で解決し、F12 で同梱ライブラリへジャンプできます。**これは完全な OMG 標準
-ライブラリではありません** — 関数パッケージ(`BaseFunctions` / `NumericalFunctions`
-等)は import 解決用の空パッケージとして存在するだけです。
+Resolved via import; F12 jumps into the bundled library. **This is not the full OMG
+standard library** — function packages (`BaseFunctions` / `NumericalFunctions`, etc.)
+exist only as empty packages for import resolution.
 
-### KerML 基盤層 — Parse-only
+### KerML foundation layer — Parse-only
 
-`classifier` / `feature` / `datatype` / `class` / `struct` / `function` /
-`predicate` / `metaclass` / `behavior` / `assoc[iation]` / `connector` /
-`interaction` / `expr` / `step` / `multiplicity` / `type` などの KerML 定義キーワード
-(`lexer.ts` `KEYWORDS` / `parser.ts` `KERML_KINDS`)と、その関係節
-(`specializes` / `subsets` / `redefines` / `conjugates` / `typed by` /
-`chains` / `crosses` / `disjoint from` / `unions` / `intersects` …)、コネクタ
-(`binding`/`connector`/`succession` の `from … to …` / `first … then …` / 多重度)、
-`inv` 不変条件、スタンドアロン関係要素(`subtype` / `specialization` / `redefinition` …)
-を**パース**します。
+KerML definition keywords such as `classifier` / `feature` / `datatype` / `class` /
+`struct` / `function` / `predicate` / `metaclass` / `behavior` / `assoc[iation]` /
+`connector` / `interaction` / `expr` / `step` / `multiplicity` / `type`
+(`lexer.ts` `KEYWORDS` / `parser.ts` `KERML_KINDS`), their relationship clauses
+(`specializes` / `subsets` / `redefines` / `conjugates` / `typed by` / `chains` /
+`crosses` / `disjoint from` / `unions` / `intersects` …), connectors
+(`binding`/`connector`/`succession` `from … to …` / `first … then …` / multiplicity),
+`inv` invariants, and standalone relationship elements (`subtype` / `specialization` /
+`redefinition` …) are **parsed**.
 
-- **限界**: ここは**構文受理(parse-only)**で、KerML 固有レベルの意味検証・型推論・
-  可視化は行いません。また OMG 公式コーパスでカバレッジを実測していますが、式レベル
-  (`->` / `?` 等の演算子)や一部のコネクタ端記法など**未対応の構文も残っています**。
-- KerML 語彙を予約語化したため、`step` / `feature` / `type` のように KerML キーワードと
-  同名の標準ライブラリ要素も**参照名としては識別子扱い**で解決します
-  (`parser.ts` `atNameToken`)。
+- **Limits**: **syntax acceptance only**; no KerML-level semantic validation, type
+  inference, or visualization. Measured against the OMG official corpus, but expression-level
+  (`->` / `?` operators, etc.) and some connector-end notations remain **unsupported**.
+- KerML vocabulary is reserved, so standard-library elements with KerML keyword names
+  like `step` / `feature` / `type` are resolved **as identifiers when used as reference names**
+  (`parser.ts` `atNameToken`).
 
 ---
 
-## 既知の限界(まとめ)
+## Known limitations (summary)
 
-- **式は不透明** — constraint / calc 本体、値、guard / trigger は型チェックなしのテキスト。
-- **可視性は近似** — private / protected は強制せず、`public import` の再エクスポートのみ反映。
-- **制御フローは不透明** — action / state 内の `if` / `loop` / `accept` / `send` などは
-  テキストとして読み飛ばす。
-- **標準ライブラリは最小サブセット** — 完全な OMG ライブラリではない。
-- **図のリネームは宣言名のみ** — 参照箇所は追従しない。
-- **KerML 基盤層は parse-only** — 定義・関係・コネクタ・`inv` を構文受理するが、
-  意味検証・可視化は未対応。式レベルや一部記法に未対応の構文が残る。
+- **Expressions are opaque** — constraint / calc bodies, values, guard / trigger are text without type-checking.
+- **Visibility is approximate** — private / protected not enforced; only `public import` re-export reflected.
+- **Control flow is opaque** — `if` / `loop` / `accept` / `send` inside action / state are skipped as text.
+- **Standard library is minimal** — not the full OMG library.
+- **Diagram rename is declaration-only** — references do not follow.
+- **KerML foundation layer is parse-only** — defs, relationships, connectors, `inv` accepted syntactically;
+  no semantic validation or visualization; expression-level and some notations remain unsupported.
 
-## 関連
+## Related
 
-- [対応記法と制限事項](syntax.md) — サブセットの概要
-- [ダイアグラム機能](diagrams.md) — 図種別ごとの可視化対象
+- [Supported notation and limitations](syntax.md) — subset overview
+- [Diagram features](diagrams.md) — what each diagram kind visualizes

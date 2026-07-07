@@ -120,7 +120,7 @@ export function validateFile(
     if (el === fileRoot) return;
     const scope = el.parent ?? fileRoot;
 
-    // ---- imports should declare explicit visibility (SysIDE 互換) ----
+    // ---- imports should declare explicit visibility (SysIDE compatible) ----
     if (
       options.importVisibility &&
       el.kind === "import" &&
@@ -128,19 +128,19 @@ export function validateFile(
     ) {
       out.push({
         rule: "importVisibility",
-        message: "import には可視性 (public / private) を明示してください",
+        message: "import must declare visibility (public / private)",
         start: el.start,
         end: el.end,
       });
     }
 
-    // ---- flow ends should use dot notation (端は要素内のフィーチャ) ----
+    // ---- flow ends should use dot notation (ends are features inside elements) ----
     if (options.conformance && el.kind === "flow" && el.ends) {
       for (const ref of el.refs) {
         if (ref.kind === "end" && !ref.name.includes(".") && !ref.name.includes("::")) {
           out.push({
             rule: "conformance",
-            message: `フローの端 '${ref.name}' は dot 記法で要素内のフィーチャを指定してください (例: ${ref.name}.item)`,
+            message: `flow end '${ref.name}' must use dot notation to refer to a feature inside an element (e.g. ${ref.name}.item)`,
             start: ref.start,
             end: ref.end,
           });
@@ -158,7 +158,7 @@ export function validateFile(
         if (options.unresolved) {
           out.push({
             rule: "unresolved",
-            message: `'${ref.name}' を解決できません`,
+            message: `Cannot resolve '${ref.name}'`,
             start: ref.start,
             end: ref.end,
           });
@@ -173,7 +173,7 @@ export function validateFile(
         if (allowed && target.kind.endsWith(" def") && !allowed.includes(target.kind)) {
           out.push({
             rule: "conformance",
-            message: `${el.kind} は ${allowed.join(" / ")} で型付けする必要があります ('${ref.name}' は ${target.kind})`,
+            message: `${el.kind} must be typed by ${allowed.join(" / ")} ('${ref.name}' is ${target.kind})`,
             start: ref.start,
             end: ref.end,
           });
@@ -184,7 +184,7 @@ export function validateFile(
         if (g1 && g2 && g1 !== g2) {
           out.push({
             rule: "conformance",
-            message: `${el.kind} が ${target.kind} ('${ref.name}') を特化しています — 種類が一致しません`,
+            message: `${el.kind} specializes ${target.kind} ('${ref.name}') — kinds do not match`,
             start: ref.start,
             end: ref.end,
           });
@@ -193,7 +193,7 @@ export function validateFile(
         if (target.kind.endsWith(" def") && target.kind !== "metadata def") {
           out.push({
             rule: "conformance",
-            message: `メタデータ注釈 '${ref.name}' は metadata def を参照する必要があります (実際は ${target.kind})`,
+            message: `metadata annotation '${ref.name}' must refer to a metadata def (got ${target.kind})`,
             start: ref.start,
             end: ref.end,
           });
@@ -222,7 +222,7 @@ export function validateFile(
           if (inherited && inherited !== c) {
             out.push({
               rule: "shadowing",
-              message: `'${c.name}' は継承メンバーを隠しています — 再定義するには ':>> ${c.name}' を使ってください`,
+              message: `'${c.name}' hides an inherited member — use ':>> ${c.name}' to redefine`,
               start: c.nameStart,
               end: c.nameEnd ?? c.nameStart + c.name.length,
             });
@@ -243,7 +243,7 @@ export function validateFile(
         if (prev) {
           out.push({
             rule: "duplicate",
-            message: `'${c.name}' は同じスコープ内で重複しています`,
+            message: `'${c.name}' is duplicated in the same scope`,
             start: c.nameStart,
             end: c.nameEnd ?? c.nameStart + c.name.length,
           });

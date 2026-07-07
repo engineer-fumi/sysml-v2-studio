@@ -484,12 +484,12 @@ export function DiagramApp() {
   return (
     <div className="app">
       <div className="header">
-        <span className="title">SysML ダイアグラム</span>
+        <span className="title">SysML Diagram</span>
         <select
           className="root-select kind-select"
           value={kind}
           onChange={(e) => changeKind(e.target.value as DiagramKind)}
-          title="図の種類"
+          title="Diagram kind"
         >
           {DIAGRAM_KINDS.map((k) => (
             <option key={k.id} value={k.id}>
@@ -502,18 +502,18 @@ export function DiagramApp() {
           value={diagramRoot === combinedRoot ? "" : keyOf(diagramRoot)}
           onChange={(e) => setRootKey(e.target.value)}
         >
-          <option value="">モデル全体 (全ファイル)</option>
+          <option value="">Entire model (all files)</option>
           {rootCandidates.map((el, i) => (
             <option key={i} value={keyOf(el)}>
               {qualifiedName(el)} ({el.kind})
             </option>
           ))}
         </select>
-        <span className="file-count">{files.length} ファイル</span>
+        <span className="file-count">{files.length} files</span>
       </div>
       <div className="edit-toolbar">
-        {modeButton("select", "⬚ 選択", "クリックで選択、名前付きブロックはドラッグで配置変更")}
-        {modeButton("connect", "⌁ 接続", "2 つの要素を順にクリックして connect 文を挿入")}
+        {modeButton("select", "⬚ Select", "Click to select; drag named blocks to reposition")}
+        {modeButton("connect", "⌁ Connect", "Click two elements in order to insert a connect statement")}
         <select
           className="add-select"
           value={mode.startsWith("add:") ? mode.slice(4) : ""}
@@ -521,15 +521,15 @@ export function DiagramApp() {
             setConnectSource(undefined);
             setMode(e.target.value ? (`add:${e.target.value}` as EditMode) : "select");
           }}
-          title="追加する要素の種類を選び、追加先 (コンテナ or 空白=図ルート) をクリック"
+          title="Choose element kind to add, then click a container or blank area (diagram root)"
         >
-          <option value="">+ 追加…</option>
-          <optgroup label="使用 (usage)">
+          <option value="">+ Add…</option>
+          <optgroup label="Usage">
             {ADD_USAGE_KINDS.map((k) => (
               <option key={k} value={k}>{k}</option>
             ))}
           </optgroup>
-          <optgroup label="定義 (def)">
+          <optgroup label="Definition">
             {ADD_DEF_KINDS.map((k) => (
               <option key={k} value={k}>{k}</option>
             ))}
@@ -539,29 +539,29 @@ export function DiagramApp() {
           className="mode-btn"
           onClick={() => historyFnRef.current.undo()}
           disabled={historySize.undo === 0}
-          title="配置・サイズ・線編集を元に戻す (Cmd/Ctrl+Z)"
+          title="Undo layout, size, and edge edits (Cmd/Ctrl+Z)"
         >
-          ↩ 元に戻す
+          ↩ Undo
         </button>
         <button
           className="mode-btn"
           onClick={() => historyFnRef.current.redo()}
           disabled={historySize.redo === 0}
-          title="やり直す (Shift+Cmd/Ctrl+Z)"
+          title="Redo (Shift+Cmd/Ctrl+Z)"
         >
-          ↪ やり直す
+          ↪ Redo
         </button>
-        <button className="mode-btn" onClick={resetLayout} title="この図の手動配置をリセット">
-          ⟲ 配置リセット
+        <button className="mode-btn" onClick={resetLayout} title="Reset manual layout for this diagram">
+          ⟲ Reset layout
         </button>
         <span className="mode-hint">
           {mode === "connect"
             ? connectSource
-              ? `接続元: ${connectSource.name ?? connectSource.kind} → 接続先をクリック`
-              : "接続元をクリック"
+              ? `Source: ${connectSource.name ?? connectSource.kind} → click target`
+              : "Click connection source"
             : mode.startsWith("add:")
-              ? `${mode.slice(4)} の追加先をクリック — コンテナ or 空白 (図ルートへ) / Esc で取消`
-              : "ドラッグで配置変更 / 右クリックでメニュー (接続・中継点・線種・削除) / 右下・右上ハンドルでサイズ変更 / Delete で選択中の要素・線を削除 / Cmd+Z で元に戻す"}
+              ? `Click where to add ${mode.slice(4)} — container or blank (diagram root) / Esc to cancel`
+              : "Drag to reposition / right-click for menu (connect, waypoints, line style, delete) / bottom-right and top-right handles to resize / Delete removes selection / Cmd+Z to undo"}
         </span>
       </div>
       <DiagramView

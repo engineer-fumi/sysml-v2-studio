@@ -41,7 +41,7 @@ describe("SysML diagram — VS Code UI", function () {
     const labels = await Promise.all(picks.map((p) => p.getLabel()));
     await palette.cancel();
     assert.ok(
-      labels.some((l) => l.includes("ダイアグラムを開く")),
+      labels.some((l) => l.includes("Open Diagram")),
       `expected the diagram command, got: ${labels.join(" | ")}`
     );
   });
@@ -51,7 +51,7 @@ describe("SysML diagram — VS Code UI", function () {
     // re-appearing welcome overlay cannot intercept a mouse click
     const workbench = new Workbench();
     const input = await workbench.openCommandPrompt();
-    await input.setText(">SysML: ダイアグラムを開く");
+    await input.setText(">SysML: Open Diagram");
     await dismissOverlays();
     await input.confirm();
 

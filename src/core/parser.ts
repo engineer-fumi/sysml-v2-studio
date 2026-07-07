@@ -109,7 +109,7 @@ class Parser {
   private expect(text: string, context: string): boolean {
     if (this.eat(text)) return true;
     const t = this.peek();
-    this.error(`'${text}' が必要です (${context})`, t.start, t.end);
+    this.error(`'${text}' expected (${context})`, t.start, t.end);
     return false;
   }
 
@@ -139,12 +139,12 @@ class Parser {
     for (;;) {
       const t = this.peek();
       if (t.type === "eof") {
-        if (!topLevel) this.error("'}' が必要です", t.start, t.end);
+        if (!topLevel) this.error("'}' expected", t.start, t.end);
         return;
       }
       if (t.text === "}") {
         if (topLevel) {
-          this.error("対応する '{' のない '}' です", t.start, t.end);
+          this.error("'}' without matching '{'", t.start, t.end);
           this.next();
           continue;
         }
@@ -168,7 +168,7 @@ class Parser {
       }
       if (this.pos === before) {
         // no progress – skip a token to avoid an endless loop
-        this.error(`予期しないトークン '${t.text}'`, t.start, t.end);
+        this.error(`unexpected token '${t.text}'`, t.start, t.end);
         this.next();
       }
     }
@@ -245,7 +245,7 @@ class Parser {
           if (this.at("package")) {
             return this.parseNamed("library package", modifiers, startTok);
           }
-          this.error("'library' の後には 'package' が必要です", t.start, t.end);
+          this.error("'package' expected after 'library'", t.start, t.end);
           this.recover();
           return undefined;
         case "import":
@@ -382,7 +382,7 @@ class Parser {
             const isDef = this.eat("def");
             return this.parseDeclaration(isDef ? "use case def" : "use case", modifiers, direction, startTok);
           }
-          this.error("'use' の後には 'case' が必要です", t.start, t.end);
+          this.error("'case' expected after 'use'", t.start, t.end);
           this.recover();
           return undefined;
         }
@@ -455,7 +455,7 @@ class Parser {
       return el;
     }
 
-    this.error(`予期しないトークン '${t.text}'`, t.start, t.end);
+    this.error(`unexpected token '${t.text}'`, t.start, t.end);
     this.recover();
     return undefined;
   }
@@ -505,7 +505,7 @@ class Parser {
       this.next();
       parent.doc = stripCommentBody(t.text);
     } else {
-      this.error("doc の後にはコメント /* ... */ が必要です", startTok.start, startTok.end);
+      this.error("comment /* ... */ expected after doc", startTok.start, startTok.end);
       this.recover();
     }
     this.eat(";");
@@ -1105,10 +1105,10 @@ class Parser {
     }
     if (this.eat("{")) {
       this.parseMembers(el);
-      this.expect("}", `${el.kind} ${el.name ?? ""} の本体`);
+      this.expect("}", `body of ${el.kind} ${el.name ?? ""}`);
     } else if (!this.eat(";")) {
       const t = this.peek();
-      this.error(`';' または '{' が必要です`, t.start, t.end);
+      this.error(`';' or '{' expected`, t.start, t.end);
       this.recover();
     }
     el.end = this.prevEnd();
@@ -1137,7 +1137,7 @@ class Parser {
     const parts: string[] = [];
     if (!this.atNameToken()) {
       const t = this.peek();
-      this.error("名前が必要です", t.start, t.end);
+      this.error("name expected", t.start, t.end);
       return "";
     }
     parts.push(unquoteName(this.next().text));

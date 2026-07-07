@@ -772,7 +772,7 @@ export function DiagramView({
     const style = edge.style ?? "straight";
     const items: MenuItem[] = [
       {
-        label: "中継点を追加",
+        label: "Add waypoint",
         disabled: !routable,
         action: () => {
           const pts = [{ x: edge.x1, y: edge.y1 }, ...points, { x: edge.x2, y: edge.y2 }];
@@ -791,23 +791,23 @@ export function DiagramView({
         },
       },
       {
-        label: "中継点を削除",
+        label: "Remove waypoint",
         disabled: nearIndex < 0,
         action: () => commitRoute(edge, points.filter((_, i) => i !== nearIndex)),
       },
       {
-        label: "経由点をすべてクリア",
+        label: "Clear all waypoints",
         disabled: points.length === 0,
         action: () => onRouteEdge(edge.key!, []),
       },
       {
-        label: "端点の固定を解除",
+        label: "Unpin endpoints",
         disabled: !edge.pinnedA && !edge.pinnedB,
         action: () => onAnchorEdge(edge.key!, null),
       },
       { label: "", separator: true },
       ...EDGE_STYLES.map((st) => ({
-        label: `線種: ${st.label}`,
+        label: `Line style: ${st.label}`,
         checked: style === st.value,
         action: () => onEdgeStyle(edge.key!, st.value),
       })),
@@ -815,7 +815,7 @@ export function DiagramView({
     if (DELETABLE_EDGE_KINDS.has(edge.kind) && edge.el.fileId !== undefined) {
       items.push(
         { label: "", separator: true },
-        { label: "接続を削除 (モデルから)", action: () => onDeleteElement(edge.el) }
+        { label: "Delete connection (from model)", action: () => onDeleteElement(edge.el) }
       );
     }
     openMenu(e, items);
@@ -823,15 +823,15 @@ export function DiagramView({
 
   const onNodeContextMenu = (el: SysMLElement, e: React.MouseEvent, named: boolean) => {
     const items: MenuItem[] = [
-      { label: "ここから接続 (connect)", action: () => onStartConnect(el) },
+      { label: "Connect from here (connect)", action: () => onStartConnect(el) },
     ];
     if (named && el.fileId !== undefined) {
-      items.push({ label: "リネーム", action: () => onElementDoubleClick(el) });
+      items.push({ label: "Rename", action: () => onElementDoubleClick(el) });
     }
     if (el.fileId !== undefined && el.kind !== "file") {
       items.push(
         { label: "", separator: true },
-        { label: "削除 (モデルから)", action: () => onDeleteElement(el) }
+        { label: "Delete (from model)", action: () => onDeleteElement(el) }
       );
     }
     openMenu(e, items);
@@ -874,27 +874,27 @@ export function DiagramView({
   // edges of the currently selected element (line-style controls)
   const selectedEdges = layout.edges.filter((e) => e.el === selected && e.key);
   const EDGE_STYLES: { value: EdgeStyle; label: string }[] = [
-    { value: "straight", label: "直線" },
-    { value: "ortho", label: "折れ線" },
-    { value: "curve", label: "曲線" },
+    { value: "straight", label: "Straight" },
+    { value: "ortho", label: "Orthogonal" },
+    { value: "curve", label: "Curve" },
   ];
 
   return (
     <div className="diagram-view" ref={viewRef}>
       <div className="diagram-toolbar">
-        <button onClick={fit} title="全体表示">⤢ Fit</button>
-        <button onClick={resetView} title="リセット">100%</button>
-        <button onClick={exportSvg} title="SVG として保存">⭳ SVG</button>
+        <button onClick={fit} title="Fit to view">⤢ Fit</button>
+        <button onClick={resetView} title="Reset zoom">100%</button>
+        <button onClick={exportSvg} title="Save as SVG">⭳ SVG</button>
         <span className="diagram-zoom">{Math.round(view.scale * 100)}%</span>
         {mode === "select" && selectedEdges.length > 0 && (
           <>
-            <span className="diagram-zoom">線種:</span>
+            <span className="diagram-zoom">Line style:</span>
             {EDGE_STYLES.map((s) => (
               <button
                 key={s.value}
                 className={(selectedEdges[0].style ?? "straight") === s.value ? "active" : undefined}
                 onClick={() => selectedEdges.forEach((e) => onEdgeStyle(e.key!, s.value))}
-                title={`選択中の線を${s.label}で描画`}
+                title={`Draw selected line as ${s.label}`}
               >
                 {s.label}
               </button>
@@ -902,9 +902,9 @@ export function DiagramView({
             {selectedEdges.some((e) => e.points?.length) && (
               <button
                 onClick={() => selectedEdges.forEach((e) => onRouteEdge(e.key!, []))}
-                title="選択中の線の中継点をすべて削除"
+                title="Remove all waypoints on selected lines"
               >
-                ⟲ 経由点クリア
+                ⟲ Clear waypoints
               </button>
             )}
           </>
@@ -1006,9 +1006,9 @@ export function DiagramView({
       )}
       {layout.nodes.length === 0 && (
         <div className="diagram-empty">
-          この図の種類に表示できる要素がありません。<br />
-          図の種類を切り替えるか、対応する要素 (part / requirement / state など) を
-          .sysml ファイルに記述してください。
+          No elements to display for this diagram kind.<br />
+          Switch the diagram kind, or add matching elements (part / requirement / state, etc.) to a
+          .sysml file.
         </div>
       )}
     </div>
