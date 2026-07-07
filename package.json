@@ -1,7 +1,7 @@
 {
   "name": "sysml-v2-studio",
   "displayName": "SysML v2 Studio",
-  "description": "SysML v2 (.sysml / .kerml) Authoring, visualization, and editing: Language support, 8 types of editable diagrams, and Claude (MCP) integration.
+  "description": "SysML v2 (.sysml / .kerml) authoring, visualization, and editing: language support, 8 editable diagram kinds, Claude (MCP) integration",
   "version": "0.8.1",
   "publisher": "engineer-fumi",
   "license": "MIT",
