@@ -102,6 +102,21 @@ test("import visibility is recorded on the modifiers", () => {
   assert.strictEqual(imports[0].target, "A::*");
 });
 
+test("parses import filters (`import P::**[@Safety]`) without error", () => {
+  const r = parseSysML(`package P {
+    import Base::**[@Safety];
+    import A::*[@Critical and @Approved];
+    public import B::C[@Rationale] {
+      doc /* filtered import with a body */
+    }
+  }`);
+  assert.strictEqual(r.errors.length, 0, "no parse errors on import filters");
+  const imports = find(r.root, "P").children.filter((c) => c.kind === "import");
+  assert.strictEqual(imports.length, 3);
+  assert.strictEqual(imports[0].target, "Base::**");
+  assert.ok(imports[2].modifiers.includes("public"));
+});
+
 test("recovers from a syntax error and keeps later members", () => {
   const r = parseSysML(`package P {
     part def {;
