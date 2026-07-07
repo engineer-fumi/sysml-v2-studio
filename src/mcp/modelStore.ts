@@ -26,7 +26,7 @@ export interface StoredFile {
 
 const SKIP_DIRS = new Set([
   "node_modules", "dist", "build", "out", ".git", ".test-extensions",
-  "test-resources", "playwright-report", "test-results",
+  "test-resources", "playwright-report", "test-results", "tmp",
 ]);
 
 /** convert a 0-based character offset into a 1-based line/column. */

@@ -44,7 +44,7 @@ export class ModelIndex implements vscode.Disposable {
     // top-level element and can resolve names to a stale copy (see indexFilter)
     const uris = await vscode.workspace.findFiles(
       "**/*.{sysml,kerml}",
-      "{**/node_modules/**,**/dist/**,**/build/**,**/out/**,**/test-results/**,**/.*/**}"
+      "{**/node_modules/**,**/dist/**,**/build/**,**/out/**,**/test-results/**,**/tmp/**,**/.*/**}"
     );
     for (const uri of uris) {
       await this.indexUri(uri);
