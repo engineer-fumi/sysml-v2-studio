@@ -6,6 +6,7 @@ import * as assert from "node:assert";
 import { SysMLElement, createElement, walk } from "../src/core/ast";
 import { parseSysML } from "../src/core/parser";
 import { Resolver } from "../src/core/resolve";
+import { validateFile } from "../src/core/validate";
 import { Expr, parseExpression, collectExprRefs, pathAtOffset } from "../src/core/expr";
 
 let passed = 0;
@@ -264,6 +265,45 @@ test("resolves inherited members and conjugated ports", () => {
     resolver.resolve(find(root, "P"), "~FuelPort"),
     find(root, "FuelPort"),
     "conjugated reference resolves to the base type"
+  );
+});
+
+test("control nodes parse as named members and resolve in successions", () => {
+  const root = model(`package A {
+    action def Y {
+      action m;
+      fork forkPoint;
+      first start;
+      then m;
+      then forkPoint;
+    }
+  }`);
+  const fk = find(root, "forkPoint");
+  assert.strictEqual(fk.kind, "action", "fork node is a named member");
+  assert.ok(fk.modifiers.includes("fork"), "fork keyword kept as modifier");
+  const resolver = new Resolver(root);
+  assert.strictEqual(
+    resolver.resolve(find(root, "Y"), "forkPoint"),
+    fk,
+    "succession target resolves to the fork node"
+  );
+});
+
+test("implicit start/done successions produce no unresolved diagnostics", () => {
+  const root = model(`package A {
+    action def X {
+      first start;
+      then action a;
+      then done;
+    }
+  }`);
+  const resolver = new Resolver(root);
+  const file = root.children[0];
+  const diags = validateFile(file, resolver).filter((d) => d.rule === "unresolved");
+  assert.deepStrictEqual(
+    diags.map((d) => d.message),
+    [],
+    "start/done are implicit action end points"
   );
 });
 

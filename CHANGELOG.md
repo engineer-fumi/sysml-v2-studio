@@ -6,6 +6,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Control nodes and implicit action end points resolve** — `fork f;` /
+  `join` / `merge` / `decide` declarations now parse as named members, so
+  successions like `then f;` resolve to them (previously opaque and
+  unresolvable). Bare `first start;` / `then done;` successions no longer
+  report `unresolved` — `start` / `done` are the implicit action end
+  points (`Actions::Action`). (#30)
+
 ### Added
 
 - **Expression bodies parse cleanly** — values and statements that mix balanced
