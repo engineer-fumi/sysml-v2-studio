@@ -306,10 +306,28 @@ class Parser {
         case "while":
         case "loop":
         case "for":
+          return this.parseOpaqueStatement(startTok);
         case "merge":
         case "decide":
         case "fork":
-        case "join":
+        case "join": {
+          // control node declaration: `fork forkPoint;` — parse as a named
+          // member (kind "action" + modifier) so successions like
+          // `then forkPoint;` can resolve it. Other forms stay opaque.
+          if (this.peek(1).type === "identifier") {
+            this.next();
+            const el = createElement("action", startTok.start);
+            el.modifiers = [...modifiers, t.text];
+            this.takePendingDoc(el);
+            const nt = this.next();
+            el.name = unquoteName(nt.text);
+            el.nameStart = nt.start;
+            el.nameEnd = nt.end;
+            this.parseBodyOrSemi(el);
+            return el;
+          }
+          return this.parseOpaqueStatement(startTok);
+        }
         case "return":
         case "else":
         case "until":

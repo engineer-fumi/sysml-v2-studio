@@ -155,6 +155,10 @@ export function validateFile(
       const target = resolver.resolve(scope, base);
 
       if (!target) {
+        // implicit action end points: every action/state body may reference
+        // the standard `start` / `done` nodes (Actions::Action) in
+        // successions (`first start; … then done;`) without declaring them.
+        if (ref.kind === "end" && (ref.name === "start" || ref.name === "done")) continue;
         if (options.unresolved) {
           out.push({
             rule: "unresolved",
