@@ -197,14 +197,14 @@ package Process {
 | Definitions & Usages(part / item / attribute / port / action / state …) | **Full** |
 | Specialization(`:>` / `:>>` / `specializes` / `subsets` / `redefines`) | **Full** |
 | Connections / Interfaces / Bindings / Flows | **Full**(结构) |
-| Requirements / Constraints / satisfy・verify | **Full**(结构)/ 表达式不透明 |
+| Requirements / Constraints / satisfy・verify | **Full**(结构)/ 表达式 AST+类型检查 |
 | Use Cases / Actors / include・perform | **Full** |
 | Metadata / Annotations(`@`、`#`、`metadata def`) | **Full**(解析) |
 | Comments / Documentation(`//`、`/* */`、`doc`、`comment`) | **Full** |
 | States & Transitions / Actions / Calc | **Partial**(trigger/guard/effect 与控制流不透明) |
 | Views / Viewpoints / Rendering | **Partial**(渲染未实现) |
 | Imports / Aliases / Visibility | **Partial**(private/protected 未强制) |
-| Expressions(constraint / calc 主体与值) | **Parse-only**(不透明文本,无类型检查) |
+| Expressions(值与 constraint / calc 主体) | **Partial**(结构化 AST+仅正向知识的类型检查,不求值) |
 | Standard Library | **内置最小子集**(非完整的 OMG 库) |
 | KerML 基础层(classifier / feature / function …) | **Parse-only** |
 
