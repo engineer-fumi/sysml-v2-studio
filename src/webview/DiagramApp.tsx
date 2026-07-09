@@ -99,6 +99,8 @@ export function DiagramApp() {
   const [mode, setMode] = useState<EditMode>("select");
   // type filter: element kinds hidden from the diagram (ephemeral view state)
   const [hiddenKinds, setHiddenKinds] = useState<Set<string>>(new Set());
+  // engine-default orthogonal wire routing (ephemeral view state)
+  const [autoRoute, setAutoRoute] = useState(true);
   const [connectSource, setConnectSource] = useState<SysMLElement | undefined>(undefined);
   const [pendingHighlight, setPendingHighlight] = useState<
     { fileId: number; offset: number } | undefined
@@ -679,6 +681,8 @@ export function DiagramApp() {
         hiddenKinds={hiddenKinds}
         onToggleKind={toggleKind}
         onClearKindFilter={clearKindFilter}
+        autoRoute={autoRoute}
+        onToggleAutoRoute={() => setAutoRoute((v) => !v)}
       />
     </div>
   );

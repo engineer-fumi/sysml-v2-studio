@@ -98,6 +98,10 @@ interface Props {
   onToggleKind: (kind: string) => void;
   /** clear the type filter (show all kinds) */
   onClearKindFilter: () => void;
+  /** engine-default orthogonal wire routing on / off */
+  autoRoute: boolean;
+  /** toggle orthogonal wire routing */
+  onToggleAutoRoute: () => void;
 }
 
 /** edge kinds whose underlying statement can be safely deleted from the menu
@@ -549,6 +553,8 @@ export function DiagramView({
   hiddenKinds,
   onToggleKind,
   onClearKindFilter,
+  autoRoute,
+  onToggleAutoRoute,
 }: Props) {
   const viewRef = useRef<HTMLDivElement>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
@@ -620,15 +626,15 @@ export function DiagramView({
   }, [offsets, drag.live.drag, drag.live.resize]);
 
   const layout = useMemo(
-    () => layoutDiagram(root, { offsets: effectiveOffsets, keyOf, kind, hiddenKinds }),
-    [root, effectiveOffsets, keyOf, kind, hiddenKinds]
+    () => layoutDiagram(root, { offsets: effectiveOffsets, keyOf, kind, hiddenKinds, autoRoute }),
+    [root, effectiveOffsets, keyOf, kind, hiddenKinds, autoRoute]
   );
 
   // full set of box kinds for the type-filter chips — computed from an
   // unfiltered layout (keyed on root/kind only) so a hidden kind's chip stays
   // present and the filter can be undone. Not recomputed on drag or on filter.
   const filterKinds = useMemo(() => {
-    const l = layoutDiagram(root, { keyOf, kind });
+    const l = layoutDiagram(root, { keyOf, kind, autoRoute: false });
     const s = new Set<string>();
     const visit = (n: DiagramNode) => {
       s.add(n.el.kind);
@@ -955,6 +961,13 @@ export function DiagramView({
           ▸ Collapse all
         </button>
         <button onClick={onExpandAll} title="Expand all collapsed boxes">▾ Expand all</button>
+        <button
+          className={autoRoute ? "active" : undefined}
+          onClick={onToggleAutoRoute}
+          title="Route wires orthogonally around boxes (engine default). Off = straight lines. Hand-routed wires are kept either way."
+        >
+          ⌐ Ortho wires
+        </button>
         {filterKinds.length > 1 && (
           <span className="kind-filter" title="Show / hide element kinds">
             <span className="kind-filter-label">Kinds:</span>

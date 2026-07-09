@@ -1,4 +1,5 @@
 import { SysMLElement, createElement, walk } from "./ast";
+import { RouteBox, makeRouter } from "./edgeRouter";
 import { Resolver } from "./resolve";
 import {
   DiagramKind,
@@ -661,8 +662,18 @@ export function borderPoint(
   return { x: box.x + tt * box.w, y: box.y + box.h };
 }
 
-function applyEdgeRouting(edges: DiagramEdge[], options: LayoutOptions): void {
+function applyEdgeRouting(
+  edges: DiagramEdge[],
+  options: LayoutOptions,
+  boxByEl?: Map<SysMLElement, DiagramNode>
+): void {
   const counters = new Map<string, number>();
+  // auto-routed edges (no manual routing) get orthogonal, box-avoiding waypoints.
+  // The router is built once over all placed boxes and reused for every edge.
+  const autoRoute = options.autoRoute !== false && !!boxByEl && boxByEl.size > 0;
+  const router = autoRoute
+    ? makeRouter([...boxByEl!.values()].map((n): RouteBox => ({ x: n.x, y: n.y, w: n.w, h: n.h, el: n.el })))
+    : undefined;
   for (const e of edges) {
     const base = `${options.keyOf ? options.keyOf(e.el) : ""}~edge~${e.kind}`;
     const i = counters.get(base) ?? 0;
@@ -672,6 +683,7 @@ function applyEdgeRouting(edges: DiagramEdge[], options: LayoutOptions): void {
     if (entry?.style) e.style = entry.style;
     const wp = entry?.wp;
     const origin = edgeRoutingBase(e);
+    const manuallyRouted = !!(wp?.length || entry?.anchorA || entry?.anchorB);
     if (wp?.length && origin) {
       // `rel` waypoints follow the endpoint boxes; absolute ones are legacy
       e.points = entry!.rel
@@ -684,6 +696,20 @@ function applyEdgeRouting(edges: DiagramEdge[], options: LayoutOptions): void {
       e.y1 = p1.y;
       e.x2 = p2.x;
       e.y2 = p2.y;
+    } else if (router && e.a && e.b && !manuallyRouted) {
+      // engine default: orthogonal route around the boxes. Manual routing (above)
+      // always wins; the router only fills edges the human hasn't touched.
+      const path = router.route(
+        { x: e.a.x, y: e.a.y, w: e.a.w, h: e.a.h, el: e.a.el },
+        { x: e.b.x, y: e.b.y, w: e.b.w, h: e.b.h, el: e.b.el }
+      );
+      if (path && path.length >= 2) {
+        e.x1 = path[0].x;
+        e.y1 = path[0].y;
+        e.x2 = path[path.length - 1].x;
+        e.y2 = path[path.length - 1].y;
+        e.points = path.slice(1, -1);
+      }
     }
     // manually pinned endpoints override the automatic anchors
     if (entry?.anchorA && e.a) {
@@ -812,6 +838,10 @@ export interface LayoutOptions {
   /** element kinds to hide (type filter); primary boxes of these kinds drop
    *  out and containers left empty fall away with them */
   hiddenKinds?: Set<string>;
+  /** engine-default orthogonal edge routing (box-avoiding). Default on; set
+   *  false to fall back to straight center-to-center lines. Manual routing
+   *  (saved waypoints / anchors) always overrides regardless. */
+  autoRoute?: boolean;
 }
 
 /** Shift a node, its ports and children by (dx, dy). */
@@ -1039,7 +1069,7 @@ export function layoutDiagram(root: SysMLElement, options: LayoutOptions = {}): 
     }
   }
 
-  applyEdgeRouting(edges, options);
+  applyEdgeRouting(edges, options, boxByEl);
 
   const width = nodes.reduce((m, n) => Math.max(m, n.x + n.w), 0) + GAP;
   const height = nodes.reduce((m, n) => Math.max(m, n.y + n.h), 0) + GAP;
