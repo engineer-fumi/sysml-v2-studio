@@ -52,6 +52,24 @@ const NON_NAME_KEYWORDS = new Set([
   "to", "then", "from", "by", "of", "via", "if", "else", "first",
 ]);
 
+/**
+ * Keywords that, in a declaration *name* position, always introduce a tail
+ * clause (typing / specialization / relationship / value / body) rather than
+ * naming the element. A feature named with one of these can't be told apart
+ * from the clause, so they are never treated as a declared name. Keywords NOT
+ * listed here (e.g. `entry`, `do`, `type`, `merge`, `while`) may legally be a
+ * feature's name — the standard/example models declare features called exactly
+ * that — and `atDeclName` accepts them when they aren't followed by another
+ * name (a real name is never immediately followed by another name).
+ */
+const DECL_CLAUSE_KEYWORDS = new Set([
+  "defined", "typed", "by", "conjugates", "conjugate", "chains", "crosses",
+  "featured", "inverse", "disjoint", "unions", "intersects", "differences",
+  "of", "specializes", "subsets", "redefines", "references", "ordered",
+  "nonunique", "non-unique", "parallel", "about", "from", "to", "connect",
+  "allocate", "default", "all",
+]);
+
 class Parser {
   private tokens: Token[];
   private pos = 0;
@@ -375,6 +393,7 @@ class Parser {
         case "featuring":
         case "typing":
         case "inverting":
+        case "inverse":
         case "unioning":
         case "unions":
         case "intersecting":
@@ -410,6 +429,14 @@ class Parser {
           this.next();
           this.eat("struct"); // `assoc struct` variant — modeled as an association
           return this.parseDeclaration("association", modifiers, direction, startTok);
+        }
+        case "bool": {
+          // KerML scalar-feature abbreviation `bool f [clauses] { … }` — a
+          // Boolean-valued feature. Parse as an attribute (scalar feature);
+          // the implicit Boolean typing is not attached (parse-only, avoids
+          // false "unresolved" in kernel files that don't import ScalarValues).
+          this.next();
+          return this.parseDeclaration("attribute", modifiers, direction, startTok);
         }
         default:
           if (DEF_KINDS.has(t.text)) {
@@ -508,7 +535,9 @@ class Parser {
     this.next();
     const el = createElement("alias", startTok.start);
     el.modifiers = modifiers;
-    if (this.atIdentifier()) {
+    // the alias name may be a keyword (`alias multiplicity for degeneracy`);
+    // it is always followed by `for`, so accept any name token but not `for`
+    if (this.atNameToken() && !this.at("for")) {
       const t = this.next();
       el.name = unquoteName(t.text);
       el.nameStart = t.start;
@@ -521,8 +550,12 @@ class Parser {
 
   private parseDoc(parent: SysMLElement, startTok: Token): undefined {
     this.next(); // 'doc'
-    // optional name
-    if (this.atIdentifier()) this.next();
+    // optional `<short>` and/or name: `doc <a> /* … */`, `doc Name /* … */`
+    if (this.eat("<")) {
+      if (this.atNameToken()) this.next();
+      this.eat(">");
+    }
+    if (this.atNameToken()) this.next();
     const t = this.peek();
     if (t.type === "doc-comment") {
       this.next();
@@ -760,7 +793,10 @@ class Parser {
         el.modifiers.push(this.next().text);
         continue;
       }
-      if (this.eat(":>") || this.eat("specializes") || this.eat("subsets") || this.eat("::>")) {
+      if (
+        this.eat(":>") || this.eat("specializes") || this.eat("subsets") ||
+        this.eat("::>") || this.eat("references")
+      ) {
         el.specializes.push(this.qnameRef(el, "specialize", false, true));
         while (this.eat(",")) el.specializes.push(this.qnameRef(el, "specialize", false, true));
         continue;
@@ -1088,10 +1124,12 @@ class Parser {
   /** <short> name */
   private parseIdentification(el: SysMLElement): void {
     if (this.eat("<")) {
-      if (this.atIdentifier()) el.shortName = unquoteName(this.next().text);
+      // a short name may itself be a keyword (`<var>`, `<nat>`) or a quoted
+      // name (`<'nat/s'>`), not only a plain identifier
+      if (this.atNameToken()) el.shortName = unquoteName(this.next().text);
       this.eat(">");
     }
-    if (this.atIdentifier()) {
+    if (this.atDeclName()) {
       const t = this.next();
       el.name = unquoteName(t.text);
       el.nameStart = t.start;
@@ -1153,6 +1191,23 @@ class Parser {
     return t.type === "keyword" && !NON_NAME_KEYWORDS.has(t.text);
   }
 
+  /**
+   * Are we at a token that can be the *declared name* of an element? Plain
+   * identifiers always qualify. A keyword qualifies only if it never
+   * introduces a tail clause (`DECL_CLAUSE_KEYWORDS`) *and* is not immediately
+   * followed by another name — if it is, the keyword is acting as a kind or
+   * clause (`accept cmd`, `subsets Foo`) rather than as the name. This lets
+   * features literally called `entry` / `do` / `type` / `merge` / `while`
+   * (as in the OMG models) parse, without swallowing clause keywords.
+   */
+  private atDeclName(): boolean {
+    if (this.atIdentifier()) return true;
+    const t = this.peek();
+    if (t.type !== "keyword") return false;
+    if (NON_NAME_KEYWORDS.has(t.text) || DECL_CLAUSE_KEYWORDS.has(t.text)) return false;
+    return !this.atNameToken(1);
+  }
+
   /** A::B::C  (optionally ending with ::* for imports, optionally with dots) */
   private parseQualifiedName(allowStar = false, allowDots = false): string {
     // conjugated type reference: ~PortType
@@ -1162,12 +1217,19 @@ class Parser {
       prefix = "~";
     }
     const parts: string[] = [];
-    if (!this.atNameToken()) {
-      const t = this.peek();
-      this.error("name expected", t.start, t.end);
-      return "";
+    // KerML root-namespace qualifier: `$::Objects::Object` starts at the global
+    // root `$`, then continues with `::`-separated segments
+    if (this.at("$")) {
+      this.next();
+      parts.push("$");
+    } else {
+      if (!this.atNameToken()) {
+        const t = this.peek();
+        this.error("name expected", t.start, t.end);
+        return "";
+      }
+      parts.push(unquoteName(this.next().text));
     }
-    parts.push(unquoteName(this.next().text));
     for (;;) {
       if (this.at("::")) {
         const save = this.pos;

@@ -20,6 +20,8 @@ interface ModelMessage {
   layouts?: Layouts;
   /** initial diagram kind (sent only with the first model message) */
   kind?: DiagramKind;
+  /** editor cursor at open time — scope the diagram to the element there */
+  scopeAt?: { fileId: number; offset: number };
 }
 
 interface HighlightMessage {
@@ -99,6 +101,11 @@ export function DiagramApp() {
   const [pendingHighlight, setPendingHighlight] = useState<
     { fileId: number; offset: number } | undefined
   >(undefined);
+  // initial cursor scope from the extension, applied once after the model loads
+  const [pendingScope, setPendingScope] = useState<
+    { fileId: number; offset: number } | undefined
+  >(undefined);
+  const scopeInitialized = useRef(false);
   // layout undo / redo: snapshots of a root's offsets before each mutation
   const undoRef = useRef<{ layoutKey: string; offsets: LayoutOffsets }[]>([]);
   const redoRef = useRef<{ layoutKey: string; offsets: LayoutOffsets }[]>([]);
@@ -144,6 +151,15 @@ export function DiagramApp() {
     return combinedRoot;
   }, [combinedRoot, rootCandidates, rootKey, keyOf]);
 
+  // breadcrumb path from whole-model down to the current scope: the diagramRoot
+  // plus its ancestors that are themselves valid scope roots (top-down)
+  const scopeCrumbs = useMemo(() => {
+    if (diagramRoot === combinedRoot) return [] as SysMLElement[];
+    const cands = new Set(rootCandidates);
+    const anc = ancestorsOf(diagramRoot).filter((a) => cands.has(a)).reverse();
+    return [...anc, diagramRoot];
+  }, [diagramRoot, combinedRoot, rootCandidates]);
+
   // manual layouts are stored per (diagram kind, root); the general view keeps
   // the plain rootKey for backward compatibility with existing sidecar files
   const layoutKey = kind === "general" ? rootKey : `${kind}|${rootKey}`;
@@ -159,6 +175,7 @@ export function DiagramApp() {
           kindInitialized.current = true;
           setKind(msg.kind);
         }
+        if (msg.scopeAt && !scopeInitialized.current) setPendingScope(msg.scopeAt);
       } else if (msg.type === "highlight") {
         setPendingHighlight({ fileId: msg.fileId, offset: msg.offset });
       }
@@ -177,6 +194,22 @@ export function DiagramApp() {
     }
     setPendingHighlight(undefined);
   }, [pendingHighlight, combinedRoot]);
+
+  // apply the initial cursor scope once: scope the diagram to the nearest
+  // diagrammable ancestor (package / def / part) of the element under the cursor
+  useEffect(() => {
+    if (!pendingScope || scopeInitialized.current || files.length === 0) return;
+    const fileEl = combinedRoot.children.find((c) => c.fileId === pendingScope.fileId);
+    if (fileEl) {
+      const cursorEl = elementAt(fileEl, pendingScope.offset);
+      const candidates = new Set(rootCandidates);
+      let cur: SysMLElement | undefined = cursorEl;
+      while (cur && !candidates.has(cur)) cur = cur.parent;
+      if (cur) setRootKey(keyOf(cur));
+    }
+    scopeInitialized.current = true;
+    setPendingScope(undefined);
+  }, [pendingScope, combinedRoot, rootCandidates, keyOf, files.length]);
 
   // ESC resets the edit mode; Delete removes the selected element
   useEffect(() => {
@@ -497,18 +530,32 @@ export function DiagramApp() {
             </option>
           ))}
         </select>
-        <select
-          className="root-select"
-          value={diagramRoot === combinedRoot ? "" : keyOf(diagramRoot)}
-          onChange={(e) => setRootKey(e.target.value)}
-        >
-          <option value="">Entire model (all files)</option>
-          {rootCandidates.map((el, i) => (
-            <option key={i} value={keyOf(el)}>
-              {qualifiedName(el)} ({el.kind})
-            </option>
-          ))}
-        </select>
+        <nav className="scope-breadcrumbs" aria-label="Diagram scope">
+          <button
+            className="crumb"
+            disabled={diagramRoot === combinedRoot}
+            onClick={() => setRootKey("")}
+            title="Show the entire model"
+          >
+            ⌂ Entire model
+          </button>
+          {scopeCrumbs.map((el, i) => {
+            const isCurrent = i === scopeCrumbs.length - 1;
+            return (
+              <span key={keyOf(el)} className="crumb-group">
+                <span className="crumb-sep">›</span>
+                <button
+                  className={isCurrent ? "crumb crumb-current" : "crumb"}
+                  disabled={isCurrent}
+                  onClick={() => setRootKey(keyOf(el))}
+                  title={qualifiedName(el)}
+                >
+                  {el.name ?? el.kind}
+                </button>
+              </span>
+            );
+          })}
+        </nav>
         <span className="file-count">{files.length} files</span>
       </div>
       <div className="edit-toolbar">

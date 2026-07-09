@@ -48,6 +48,11 @@ export const KEYWORDS = new Set([
   "featured", "typing", "typed", "inverting", "inverse", "chains", "crosses",
   "const", "portion", "var", "meta", "member", "inv", "succ", "bindings",
   "composite", "constant",
+  // KerML scalar-feature abbreviation: `bool f` declares a Boolean-valued
+  // feature. Only `bool` is a real keyword in the corpus — `int` / `real` /
+  // `string` / `nat` only appear inside doc-comments or as short-names, so
+  // reserving them would break identifiers for no coverage gain.
+  "bool",
 ]);
 
 // Longer operators must precede their prefixes (the matcher returns the first
