@@ -34,7 +34,11 @@ const GROUPS: { name: string; dirs: string[]; exts: string[] }[] = [
  *
  * Baseline v0.8.0 (2026-07-07) was 10 / 14 / 22. Lowered here after the
  * keyword-name, `bool`, `references`, `$`-root, `inverse`, `doc <short>` and
- * alias fixes. The remaining tail is a documented set of harder constructs:
+ * alias fixes. NB: CI freshly clones the OMG master (clone-corpus.mjs), which
+ * drifts ahead of the locally-vendored snapshot — the fresh stdlib currently
+ * carries one extra parse error (9 vs the local 8), so stdlib stays at 9 to
+ * match what CI measures. The remaining tail is a documented set of harder
+ * constructs:
  *   - higher-order lambda bodies `xs->collect{…}` / `x.?{…}` (Expressions)
  *   - bare result expressions as members (`v.m`, `PassIf(…)`, `a == b`)
  *   - `locale "…"` comment/rep clause; connector `::> a.x to b`; `intersects`
@@ -45,7 +49,7 @@ const GROUPS: { name: string; dirs: string[]; exts: string[] }[] = [
 const MAX_ERRORS: Record<string, number> = {
   "sysml-examples": 9,
   "kerml-examples": 7,
-  "stdlib": 8,
+  "stdlib": 9,
 };
 
 function listFiles(dir: string, exts: string[], out: string[] = []): string[] {
