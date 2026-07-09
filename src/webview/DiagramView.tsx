@@ -92,6 +92,12 @@ interface Props {
   onCollapseAll: (keys: string[]) => void;
   /** expand all collapsed boxes */
   onExpandAll: () => void;
+  /** element kinds hidden by the type filter */
+  hiddenKinds: Set<string>;
+  /** toggle a kind in / out of the type filter */
+  onToggleKind: (kind: string) => void;
+  /** clear the type filter (show all kinds) */
+  onClearKindFilter: () => void;
 }
 
 /** edge kinds whose underlying statement can be safely deleted from the menu
@@ -540,6 +546,9 @@ export function DiagramView({
   onToggleCollapse,
   onCollapseAll,
   onExpandAll,
+  hiddenKinds,
+  onToggleKind,
+  onClearKindFilter,
 }: Props) {
   const viewRef = useRef<HTMLDivElement>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
@@ -611,9 +620,23 @@ export function DiagramView({
   }, [offsets, drag.live.drag, drag.live.resize]);
 
   const layout = useMemo(
-    () => layoutDiagram(root, { offsets: effectiveOffsets, keyOf, kind }),
-    [root, effectiveOffsets, keyOf, kind]
+    () => layoutDiagram(root, { offsets: effectiveOffsets, keyOf, kind, hiddenKinds }),
+    [root, effectiveOffsets, keyOf, kind, hiddenKinds]
   );
+
+  // full set of box kinds for the type-filter chips — computed from an
+  // unfiltered layout (keyed on root/kind only) so a hidden kind's chip stays
+  // present and the filter can be undone. Not recomputed on drag or on filter.
+  const filterKinds = useMemo(() => {
+    const l = layoutDiagram(root, { keyOf, kind });
+    const s = new Set<string>();
+    const visit = (n: DiagramNode) => {
+      s.add(n.el.kind);
+      n.children.forEach(visit);
+    };
+    l.nodes.forEach(visit);
+    return [...s].sort();
+  }, [root, keyOf, kind]);
 
   const onWheel = (e: React.WheelEvent) => {
     const rect = svgRef.current?.getBoundingClientRect();
@@ -932,6 +955,26 @@ export function DiagramView({
           ▸ Collapse all
         </button>
         <button onClick={onExpandAll} title="Expand all collapsed boxes">▾ Expand all</button>
+        {filterKinds.length > 1 && (
+          <span className="kind-filter" title="Show / hide element kinds">
+            <span className="kind-filter-label">Kinds:</span>
+            {filterKinds.map((k) => (
+              <button
+                key={k}
+                className={hiddenKinds.has(k) ? "kind-chip off" : "kind-chip"}
+                onClick={() => onToggleKind(k)}
+                title={hiddenKinds.has(k) ? `Show ${k}` : `Hide ${k}`}
+              >
+                {k}
+              </button>
+            ))}
+            {hiddenKinds.size > 0 && (
+              <button className="kind-chip clear" onClick={onClearKindFilter} title="Show all kinds">
+                ✕ clear
+              </button>
+            )}
+          </span>
+        )}
         <span className="diagram-zoom">{Math.round(view.scale * 100)}%</span>
         {mode === "select" && selectedEdges.length > 0 && (
           <>

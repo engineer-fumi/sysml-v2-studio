@@ -159,11 +159,51 @@ body,
 .diagram-toolbar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   padding: 6px 10px;
   background: #16161e;
   border-bottom: 1px solid #313244;
   flex-shrink: 0;
+}
+
+.kind-filter {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.kind-filter-label {
+  font-size: 11.5px;
+  color: #7f849c;
+  margin-left: 4px;
+}
+
+.diagram-toolbar button.kind-chip {
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 10px;
+  border-color: #89b4fa;
+  color: #89b4fa;
+  background: #1e2436;
+}
+
+.diagram-toolbar button.kind-chip:hover {
+  background: #26304a;
+}
+
+.diagram-toolbar button.kind-chip.off {
+  border-color: #45475a;
+  color: #6c7086;
+  background: #21212c;
+  text-decoration: line-through;
+}
+
+.diagram-toolbar button.kind-chip.clear {
+  border-color: #45475a;
+  color: #f38ba8;
+  background: transparent;
 }
 
 .diagram-toolbar button {

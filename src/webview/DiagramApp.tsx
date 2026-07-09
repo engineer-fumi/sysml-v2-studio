@@ -97,6 +97,8 @@ export function DiagramApp() {
   const kindInitialized = useRef(false);
   const [selected, setSelected] = useState<SysMLElement | undefined>(undefined);
   const [mode, setMode] = useState<EditMode>("select");
+  // type filter: element kinds hidden from the diagram (ephemeral view state)
+  const [hiddenKinds, setHiddenKinds] = useState<Set<string>>(new Set());
   const [connectSource, setConnectSource] = useState<SysMLElement | undefined>(undefined);
   const [pendingHighlight, setPendingHighlight] = useState<
     { fileId: number; offset: number } | undefined
@@ -525,6 +527,17 @@ export function DiagramApp() {
     vscode.postMessage({ type: "saveLayout", rootKey: layoutKey, offsets: next });
   };
 
+  const toggleKind = (k: string) => {
+    setHiddenKinds((prev) => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
+  };
+
+  const clearKindFilter = () => setHiddenKinds(new Set());
+
   const changeKind = (k: DiagramKind) => {
     kindInitialized.current = true;
     setKind(k);
@@ -663,6 +676,9 @@ export function DiagramApp() {
         onToggleCollapse={handleToggleCollapse}
         onCollapseAll={handleCollapseAll}
         onExpandAll={handleExpandAll}
+        hiddenKinds={hiddenKinds}
+        onToggleKind={toggleKind}
+        onClearKindFilter={clearKindFilter}
       />
     </div>
   );

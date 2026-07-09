@@ -216,11 +216,18 @@ function makeViewContext(root: SysMLElement, spec: ViewSpec, opts: LayoutOptions
     });
   }
 
+  // type filter: kinds the user has toggled off drop out of the diagram. Only
+  // the *primary* determination is gated, so containers (packages) are never
+  // hidden directly — they simply fall away once emptied of visible content.
+  const hidden = opts.hiddenKinds;
+  const visible = (el: SysMLElement) => !hidden || !hidden.has(el.kind);
+
   const isPrimary = (el: SysMLElement) =>
-    spec.primary.has(el.kind) ||
-    (spec.extraPrimary?.(el) ?? false) ||
-    (spec.refEdges?.has(el.kind) ?? false) ||
-    forced.has(el);
+    visible(el) &&
+    (spec.primary.has(el.kind) ||
+      (spec.extraPrimary?.(el) ?? false) ||
+      (spec.refEdges?.has(el.kind) ?? false) ||
+      forced.has(el));
 
   const memo = new Map<SysMLElement, boolean>();
   const hasPrimary = (el: SysMLElement): boolean => {
@@ -239,7 +246,10 @@ function makeViewContext(root: SysMLElement, spec: ViewSpec, opts: LayoutOptions
 
   const asBox = (el: SysMLElement): boolean => {
     if (isEdgeElement(el) || (spec.refEdges?.has(el.kind) ?? false)) return false;
-    if (spec.primary.has(el.kind) || (spec.extraPrimary?.(el) ?? false) || forced.has(el)) {
+    if (
+      visible(el) &&
+      (spec.primary.has(el.kind) || (spec.extraPrimary?.(el) ?? false) || forced.has(el))
+    ) {
       return true;
     }
     if (spec.containers.has(el.kind)) return hasPrimary(el);
@@ -799,6 +809,9 @@ export interface LayoutOptions {
   keyOf?: (el: SysMLElement) => string;
   /** diagram view kind (default "general") */
   kind?: DiagramKind;
+  /** element kinds to hide (type filter); primary boxes of these kinds drop
+   *  out and containers left empty fall away with them */
+  hiddenKinds?: Set<string>;
 }
 
 /** Shift a node, its ports and children by (dx, dy). */
