@@ -11,7 +11,26 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - **UI and docs translated to English** — extension commands, settings descriptions,
   diagram panel, diagnostics, completion snippets, and all `docs/*.md` guides are now
   in English. `README.ja.md` remains the Japanese README.
-  
+
+## [0.8.2] — 2026-07-07
+
+### Fixed
+
+- **Workspace indexing skips the `tmp/` scratch directory** — the vendored
+  grammar-coverage corpus (`scripts/clone-corpus.mjs` clones ~400 official
+  `.sysml`/`.kerml` files into `tmp/omg-corpus/`) is no longer added to the
+  workspace index. On any checkout that had cloned the corpus, indexing it
+  buried the workspace in thousands of diagnostics — false "duplicate"
+  collisions on every curated `samples/omg` file (each has an identical twin in
+  the corpus) plus the corpus's own "unresolved" references — which surfaced on
+  the real sample files. `tmp/` is a gitignored scratch area, so the extension
+  and the MCP server now both skip it. (#47)
+
+### Removed
+
+- Redundant `onLanguage:sysml` activation event in `package.json` — VS Code
+  auto-generates it from the contributed `sysml` language.
+
 ## [0.8.1] — 2026-07-07
 
 ### Fixed

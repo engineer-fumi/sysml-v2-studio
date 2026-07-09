@@ -330,6 +330,9 @@ test("workspace index ignores hidden and build directories (#42)", () => {
   assert.strictEqual(isIgnoredModelPath("sub/.git/pkg/a.sysml"), true);
   assert.strictEqual(isIgnoredModelPath("node_modules/lib/a.sysml"), true);
   assert.strictEqual(isIgnoredModelPath("dist/a.sysml"), true);
+  // tmp/ holds the vendored grammar-coverage corpus (clone-corpus.mjs); indexing
+  // its ~400 files buries the workspace in thousands of diagnostics
+  assert.strictEqual(isIgnoredModelPath("tmp/omg-corpus/sysml/src/examples/Camera Example/Camera.sysml"), true);
   assert.strictEqual(isIgnoredModelPath(".claude\\worktrees\\x\\a.sysml"), true, "windows separators");
   // normal model files stay indexed
   assert.strictEqual(isIgnoredModelPath("phase-2/1_sysml/a.sysml"), false);
