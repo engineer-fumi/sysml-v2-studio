@@ -166,7 +166,7 @@ export class DiagramPanel {
           }
         } catch (e) {
           vscode.window.showErrorMessage(
-            "SysML ダイアグラム操作に失敗しました: " + (e as Error).message
+            "SysML diagram operation failed: " + (e as Error).message
           );
         }
       },
@@ -312,7 +312,7 @@ export class DiagramPanel {
       edit.insert(file.uri, endPos, `\n${statement}\n`);
     } else {
       const el = this.findElementAtStart(file, scopeStart);
-      if (!el) throw new Error("挿入先の要素が見つかりません (再描画後にやり直してください)");
+      if (!el) throw new Error("Target element for insertion not found (retry after the diagram redraws)");
       const text = doc.getText();
       const indent = this.indentOfLine(doc, el.start);
       const lastChar = text.slice(el.end - 1, el.end);
@@ -340,7 +340,7 @@ export class DiagramPanel {
       if (!files.length) return;
       const picked = await vscode.window.showQuickPick(
         files.map((f) => ({ label: f.name, file: f })),
-        { placeHolder: `${msg.kind} を追加するファイルを選択` }
+        { placeHolder: `Select file to add ${msg.kind} to` }
       );
       if (!picked) return;
       file = picked.file;
@@ -354,9 +354,9 @@ export class DiagramPanel {
       }
       case "addElement": {
         const input = await vscode.window.showInputBox({
-          prompt: `${msg.kind} の名前 (任意で「名前 : 型」)`,
+          prompt: `Name for ${msg.kind} (optionally "name : type")`,
           placeHolder: msg.kind === "part" ? "engine : Engine" : "name : Type",
-          validateInput: (v) => (v.trim() ? undefined : "名前を入力してください"),
+          validateInput: (v) => (v.trim() ? undefined : "Please enter a name"),
         });
         if (!input) return;
         await this.insertInto(file, msg.containerStart, `${msg.kind} ${input.trim()};`);
@@ -364,9 +364,9 @@ export class DiagramPanel {
       }
       case "rename": {
         const newName = await vscode.window.showInputBox({
-          prompt: `'${msg.oldName}' の新しい名前 (宣言のみ変更されます)`,
+          prompt: `New name for '${msg.oldName}' (only the declaration is changed)`,
           value: msg.oldName,
-          validateInput: (v) => (v.trim() ? undefined : "名前を入力してください"),
+          validateInput: (v) => (v.trim() ? undefined : "Please enter a name"),
         });
         if (!newName || newName === msg.oldName) return;
         const doc = await vscode.workspace.openTextDocument(file.uri);
@@ -428,14 +428,14 @@ export class DiagramPanel {
     );
     const nonce = Math.random().toString(36).slice(2);
     return /* html */ `<!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="${cssUri}">
-  <title>SysML ダイアグラム</title>
+  <title>SysML Diagram</title>
 </head>
 <body>
   <div id="root"></div>

@@ -1,16 +1,15 @@
-# Claude (MCP) 連携ガイド
+# Claude (MCP) integration guide
 
-SysML v2 Studio は、拡張機能とは別に**スタンドアロンの MCP (Model Context
-Protocol) サーバ**を同梱しています。これを Claude Desktop / Claude Code に登録
-すると、Claude がワークスペースの `.sysml` / `.kerml` モデルを**ただのテキストでは
-なく、解決済みのモデル構造として**扱えるようになります。
+SysML v2 Studio ships a **standalone MCP (Model Context Protocol) server** separate
+from the extension. Register it with Claude Desktop / Claude Code so Claude can treat
+workspace `.sysml` / `.kerml` models as **resolved model structure**, not plain text.
 
-サーバは拡張機能と同じ `src/core`(パーサ・名前解決・検証・レイアウト)を再利用
-しているため、診断やダイアグラム構造はエディタ上の表示と一致します。依存ライブラリ
-は無く、`dist/mcp.cjs` 1 ファイルで動作します(newline-delimited JSON-RPC 2.0 over
-stdio)。
+The server reuses the same `src/core` as the extension (parser, resolution, validation,
+layout), so diagnostics and diagram structure match what you see in the editor. It has
+no runtime dependencies and runs as a single `dist/mcp.cjs` file (newline-delimited
+JSON-RPC 2.0 over stdio).
 
-## 仕組み
+## How it works
 
 ```
 Claude Desktop / Claude Code
@@ -19,62 +18,61 @@ Claude Desktop / Claude Code
    dist/mcp.cjs  ──►  src/core (parser / resolve / validate / layout)
         │
         ▼
-   ワークスペースの *.sysml / *.kerml を走査・解析
+   Scan and parse *.sysml / *.kerml in the workspace
 ```
 
-- 起動引数の第 1 引数(または環境変数 `SYSML_WORKSPACE`、無ければカレント
-  ディレクトリ)をワークスペースのルートとして再帰的に走査します。
-- 各ツール呼び出しのたびにディスクを読み直すため、Claude や他のツールが行った
-  編集が常に反映されます。
+- The first launch argument (or `SYSML_WORKSPACE` env var, else current directory)
+  is the workspace root, scanned recursively.
+- Each tool call re-reads from disk, so edits by Claude or other tools are always reflected.
 
-## 提供ツール
+## Tools
 
-| ツール | 入力 | 返すもの |
+| Tool | Input | Returns |
 |---|---|---|
-| `list_files` | — | ワークスペース内の全モデルファイル(要素数・構文エラー数) |
-| `outline` | `file?` | 名前付き宣言の構造ツリー(種類・型・行番号・doc) |
-| `validate` | `file?` | 構文 + 意味検証の診断(未解決参照・重複名・型整合・shadowing・import 可視性、行/列付き) |
-| `find_element` | `name` | 名前(短縮名)に一致する宣言の種類・型・doc・位置 |
-| `list_requirements` | — | 要求/制約と doc・属性・`satisfy` 関係 |
-| `describe_diagram` | `kind`, `file?` | 指定種別の図のボックス・ポート・接続を構造データで(`kind`: `general`/`bdd`/`ibd`/`req`/`uc`/`state`/`action`/`seq`) |
+| `list_files` | — | All model files in the workspace (element count, syntax error count) |
+| `outline` | `file?` | Structure tree of named declarations (kind, type, line number, doc) |
+| `validate` | `file?` | Syntax + semantic diagnostics (unresolved refs, duplicates, type conformance, shadowing, import visibility; with line/column) |
+| `find_element` | `name` | Kind, type, doc, and location of declarations matching the name (short name) |
+| `list_requirements` | — | Requirements/constraints with doc, attributes, and `satisfy` relationships |
+| `describe_diagram` | `kind`, `file?` | Boxes, ports, and connections for the given diagram kind as structured data (`kind`: `general`/`bdd`/`ibd`/`req`/`uc`/`state`/`action`/`seq`) |
 
-## 登録方法
+## Registration
 
-| 利用形態 | 推奨方法 |
+| Use case | Recommended method |
 |---|---|
-| **VS Code に拡張を入れている**(1.101 以上) | **方法 0: 自動登録(設定ゼロ)** |
-| Claude Desktop / Claude Code など VS Code 以外 | 方法 A: npx(推奨) |
-| 拡張あり・手元の `dist/mcp.cjs` を指したい | 方法 B: パス指定(フォールバック) |
-| リポジトリから自前ビルド | 方法 C: ローカルビルド |
+| **VS Code extension installed** (1.101+) | **Method 0: auto-registration (zero config)** |
+| Claude Desktop / Claude Code outside VS Code | Method A: npx (recommended) |
+| Extension installed · point at local `dist/mcp.cjs` | Method B: path (fallback) |
+| Build from repository | Method C: local build |
 
-### 方法 0: VS Code 拡張ユーザーは自動登録(設定ゼロ)
+### Method 0: VS Code extension users — auto-registration (zero config)
 
-**VS Code 1.101 以上**で本拡張をインストールしている場合、追加設定は不要です。拡張が
-VS Code のネイティブ MCP API(`lm.registerMcpServerDefinitionProvider`、1.101 で
-finalized)を使い、同梱の `dist/mcp.cjs` を **MCP サーバとして自動登録**します。
+With **VS Code 1.101+** and this extension installed, no extra setup is needed. The
+extension uses VS Code's native MCP API (`lm.registerMcpServerDefinitionProvider`, finalized
+in 1.101) to **auto-register** the bundled `dist/mcp.cjs` as an MCP server.
 
-- ワークスペースフォルダごとに 1 つのサーバを公開し、そのフォルダをワークスペース
-  ルートとして走査します(マルチルート対応)。サーバは VS Code 同梱の Node.js
-  (`process.execPath`)で起動するため、`node` が PATH に無くても動作します。
-- VS Code の Copilot / エージェント(MCP クライアント)から `sysml` のツール群が
-  そのまま見えます。サーバ一覧は **コマンドパレット → "MCP: List Servers"** で確認できます。
-- **要件**: `engines.vscode` を `^1.101.0` に設定済み。1.100 以下の VS Code では拡張を
-  インストールできないため、その場合は下記 npx / パス指定をご利用ください。
-- VS Code 以外のクライアント(Claude Desktop 等)はこの自動登録の対象外なので、
-  方法 A(npx)を使ってください。
+- One server per workspace folder, scanning that folder as the workspace root (multi-root
+  supported). The server starts with VS Code's bundled Node.js (`process.execPath`), so
+  it works even if `node` is not on PATH.
+- Copilot / agent (MCP client) in VS Code sees the `sysml` tools directly. List servers via
+  **Command Palette → "MCP: List Servers"**.
+- **Requirement**: `engines.vscode` is `^1.101.0`. On VS Code 1.100 or below the extension
+  cannot be installed; use npx / path below instead.
+- Non-VS Code clients (Claude Desktop, etc.) are not covered by auto-registration; use
+  Method A (npx).
 
-### 方法 A: npx(VS Code 以外で推奨・ゼロインストール)
+### Method A: npx (recommended outside VS Code · zero install)
 
-npm に公開された [`@engineer-fumi/sysml-v2-mcp`](https://www.npmjs.com/package/@engineer-fumi/sysml-v2-mcp)
-を直接起動します。事前インストール不要、パス探し不要です。
+Run the published [`@engineer-fumi/sysml-v2-mcp`](https://www.npmjs.com/package/@engineer-fumi/sysml-v2-mcp)
+directly. No prior install or path hunting.
 
-**Claude Code**(プロジェクトのルートで):
+**Claude Code** (at project root):
 
 ```bash
 claude mcp add sysml -- npx -y @engineer-fumi/sysml-v2-mcp "$(pwd)"
 ```
 
-**Claude Desktop**(macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`):
+**Claude Desktop** (macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`):
 
 ```jsonc
 {
@@ -87,76 +85,75 @@ claude mcp add sysml -- npx -y @engineer-fumi/sysml-v2-mcp "$(pwd)"
 }
 ```
 
-### 方法 B: VS Code 拡張に同梱の `dist/mcp.cjs` を指す(フォールバック)
+### Method B: point at bundled `dist/mcp.cjs` (fallback)
 
-VS Code 拡張としてインストール済みなら、同梱の `dist/mcp.cjs` を直接指せます。
-ただしインストール先パスはエディタ(VS Code / Insiders / Cursor)・OS で異なり、
-バージョン付きフォルダ名の glob 展開に注意が必要です:
+If the VS Code extension is installed, you can point directly at bundled `dist/mcp.cjs`.
+Install paths differ by editor (VS Code / Insiders / Cursor) and OS; watch glob expansion
+for versioned folder names:
 
 ```bash
-# macOS / Linux(zsh では glob が展開されない場合 `setopt null_glob` 等が必要)
+# macOS / Linux (zsh may need `setopt null_glob` if glob does not expand)
 claude mcp add sysml -- node ~/.vscode/extensions/engineer-fumi.sysml-v2-studio-*/dist/mcp.cjs "$(pwd)"
 ```
 
-### 方法 C: リポジトリからローカルビルド(開発・自前運用)
+### Method C: local build from repository (development · self-hosted)
 
 ```bash
 npm install && npm run build:mcp
 claude mcp add sysml -- node "$(pwd)/dist/mcp.cjs" "$(pwd)"
 ```
 
-Claude Desktop の場合は `command: "node"`, `args: ["<ABS_PATH>/dist/mcp.cjs", "<workspace>"]`。
+For Claude Desktop: `command: "node"`, `args: ["<ABS_PATH>/dist/mcp.cjs", "<workspace>"]`.
 
-登録後、Claude に「このモデルを検証して」「要求を一覧にして」「Vehicle の
-ブロック定義図の構造を教えて」のように依頼すると、対応するツールが呼び出されます。
+After registration, ask Claude to "validate this model", "list requirements", or "describe
+the block definition diagram structure for Vehicle" — the matching tools will be invoked.
 
-## 使用例
+## Usage examples
 
-- **レビュー**: 「`validate` で全ファイルを検証し、未解決参照を修正して」
-- **要求トレース**: 「`list_requirements` で satisfy されていない要求を挙げて」
-- **構造理解**: 「`describe_diagram kind=ibd` で system の内部接続を説明して」
-- **リファクタ**: 「`find_element` で Engine の定義箇所を探し、名前を Powerplant に変えて」
+- **Review**: "Run `validate` on all files and fix unresolved references"
+- **Requirements trace**: "Use `list_requirements` to list unsatisfied requirements"
+- **Structure**: "Use `describe_diagram kind=ibd` to explain internal connections in system"
+- **Refactor**: "Use `find_element` to locate Engine's definition and rename it to Powerplant"
 
-## npm パッケージの公開(メンテナ向け)
+## Publishing the npm package (maintainers)
 
-npx 経路(方法 A)用の npm パッケージ `@engineer-fumi/sysml-v2-mcp` は、拡張と同じ
-ソースから**バンドル済みの `dist/mcp.cjs` 1 ファイル**として生成します。
+The npx path (Method A) package `@engineer-fumi/sysml-v2-mcp` is built from the same
+source as a **single bundled `dist/mcp.cjs` file**.
 
 ```bash
-npm run build:mcp:pkg   # dist/npm/ に publish 可能なパッケージを生成
-npm run smoke:mcp       # 生成物を stdio で起動して initialize / tools/list / tools/call を検証
+npm run build:mcp:pkg   # Generate publishable package in dist/npm/
+npm run smoke:mcp       # Start via stdio; verify initialize / tools/list / tools/call
 npm run publish:mcp     # build:mcp:pkg → smoke:mcp → npm publish ./dist/npm --access public
 ```
 
-- **バージョン同期**: `scripts/build-mcp-package.mjs` がルート `package.json` の
-  `version` をそのまま採用するため、拡張(`sysml-v2-studio`)とパッケージのバージョンは
-  常に一致します。リリース時はルートの `version` を上げるだけです。
-- 生成物(`dist/npm/`)はビルド成果物で、`dist/` ごと `.gitignore` 済みです。
-  古いバンドルを publish しないよう、`publish:mcp` は毎回 `build:mcp` から作り直します。
-- `npm publish` のパスは **`./dist/npm`**(先頭の `./` 必須)。`dist/npm` だと npm が
-  GitHub ショートハンド `owner/repo` と誤認します。
+- **Version sync**: `scripts/build-mcp-package.mjs` takes `version` from root `package.json`,
+  so extension (`sysml-v2-studio`) and package versions always match. Bump root `version` on release.
+- Output (`dist/npm/`) is a build artifact; `dist/` is `.gitignore`d. `publish:mcp` rebuilds
+  from `build:mcp` each time to avoid publishing stale bundles.
+- `npm publish` path must be **`./dist/npm`** (leading `./` required). `dist/npm` alone is
+  mistaken by npm for GitHub shorthand `owner/repo`.
 
-### リリースの流れ(2 回目以降は OIDC でトークンレス)
+### Release flow (OIDC tokenless from second release onward)
 
-初回 `0.6.0` は短期トークンで手動公開済み。以降は **GitHub Actions の Trusted
-Publishing(OIDC)** で公開し、npm トークンは保存しません
-(`.github/workflows/publish-mcp.yml`)。
+Initial `0.6.0` was published manually with a short-lived token. Subsequent releases use
+**GitHub Actions Trusted Publishing (OIDC)**; no npm token is stored
+(`.github/workflows/publish-mcp.yml`).
 
-1. ルート `package.json` の `version` を上げて main にマージ。
-2. タグ `v<version>`(例 `v0.7.1`)を push、または Actions から手動実行。これは拡張の
-   公開(`publish-extension.yml`)と共通のタグで、1 本で両方が走ります。
-3. ワークフローが build → smoke → `npm publish ./dist/npm --access public --provenance`
-   を OIDC 認証で実行(短期・署名付きトークン。`--provenance` で来歴も添付)。
+1. Bump root `package.json` `version` and merge to main.
+2. Push tag `v<version>` (e.g. `v0.7.1`) or run Actions manually. Same tag triggers
+   extension publish (`publish-extension.yml`) and npm in one workflow.
+3. Workflow runs build → smoke → `npm publish ./dist/npm --access public --provenance`
+   with OIDC (short-lived signed token; `--provenance` attaches provenance).
 
-**初回セットアップ(済ませること)**: npmjs.com のパッケージ設定 → *Trusted Publisher*
-→ GitHub Actions を追加(repo `engineer-fumi/sysml-v2-studio`、workflow
-`publish-mcp.yml`)。これにより長期トークン不要・2FA バイパス不要になります。
-手動公開が必要な場合のみ、短期(1 日)・使用後すぐ失効させるトークンを使ってください。
+**One-time setup**: npmjs.com package settings → *Trusted Publisher* → add GitHub Actions
+(repo `engineer-fumi/sysml-v2-studio`, workflow `publish-mcp.yml`). Removes need for
+long-lived tokens and 2FA bypass. For manual publish only, use a short-lived (1-day)
+token and revoke immediately after use.
 
-## トラブルシューティング
+## Troubleshooting
 
-- 出力が壊れる場合: サーバは **stdout に JSON-RPC 以外を一切書きません**。ログは
-  stderr に出ます。`node dist/mcp.cjs <dir>` を手動起動し、stderr の起動メッセージ
-  でワークスペースのパスを確認してください。
-- ファイルが見つからない: ワークスペース引数が正しいか、対象が `.sysml` /
-  `.kerml` 拡張子か、`node_modules` 等の除外ディレクトリ下に無いかを確認します。
+- Broken output: the server **never writes anything but JSON-RPC to stdout**. Logs go to
+  stderr. Run `node dist/mcp.cjs <dir>` manually and check the startup message on stderr
+  for the workspace path.
+- Files not found: verify the workspace argument, `.sysml` / `.kerml` extensions, and that
+  files are not under excluded directories such as `node_modules`.

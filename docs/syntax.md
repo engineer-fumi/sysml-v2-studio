@@ -1,47 +1,47 @@
-# 対応する SysML v2 記法と制限事項
+# Supported SysML v2 notation and limitations
 
-> 言語領域ごとの対応レベルを根拠付きで一覧化した
-> [対応範囲 (conformance matrix)](conformance.md) も参照してください。
+> See also the evidence-backed per-area breakdown in the
+> [conformance matrix](conformance.md).
 
-## 言語サポート
+## Language support
 
-- シンタックスハイライト(TextMate 文法)
-- リアルタイム構文診断(「問題」パネル・波線)
-- **意味検証**(SysIDE 相当):
-  - 未解決参照(型・特化・再定義・connect / flow の端・遷移先・accept の
-    シグナル・メタデータ等)
-  - 重複名(同一スコープ、トップレベルのグローバル衝突)
-  - 型付け / 特化の種類整合(part は part def で型付け 等)
-  - 継承メンバーの隠蔽検出(`:>>` による再定義を提案)
-  - import の可視性(public / private)明示チェック
-  - 診断レベルは設定 `sysml.validation.*` で error / warning / off に変更可能
-- **標準ライブラリの最小サブセットを同梱**(`ScalarValues` / `ISQ` / `SI` /
-  基本 def 群)。import で解決し、F12 で同梱ライブラリへジャンプ可能。
-  `public import` は推移的に再エクスポートされます
-- 補完: キーワード / スニペット / ワークスペース全ファイルの要素名
-- アウトライン(階層シンボル・パンくず)
-- 定義へ移動(F12、ファイル横断)/ ホバー(種別・限定名・型・`doc`)
+- Syntax highlighting (TextMate grammar)
+- Real-time syntax diagnostics (Problems panel, squiggles)
+- **Semantic validation** (SysIDE-equivalent):
+  - Unresolved references (types, specializations, redefinitions, connect / flow
+    ends, transition targets, accept signals, metadata, etc.)
+  - Duplicate names (same scope, top-level global collisions)
+  - Typing / specialization kind conformance (e.g. part must be typed by part def)
+  - Inherited-member shadowing detection (suggests redefinition with `:>>`)
+  - import visibility (public / private) checks
+  - Diagnostic levels configurable via `sysml.validation.*` (error / warning / off)
+- **Bundled minimal standard-library subset** (`ScalarValues` / `ISQ` / `SI` and
+  basic defs). Resolved via import; F12 jumps into the bundled library.
+  `public import` is re-exported transitively
+- Completion: keywords / snippets / element names across workspace files
+- Outline (hierarchical symbols, breadcrumbs)
+- Go to definition (F12, cross-file) / hover (kind, qualified name, type, `doc`)
 
-## 対応している記法(サブセット)
+## Supported notation (subset)
 
 `package` / `part def` / `part` / `attribute` / `port` / `item` / `action` /
 `state` / `transition` / `requirement` / `constraint` / `interface` /
 `connection` / `connect` / `bind` / `flow` / `import` / `alias` / `doc` /
 `enum` / `use case` / `perform` / `exhibit` / `satisfy` /
-`@Metadata` 注釈 / `#metadata` プレフィックス / `filter` / `individual def` /
-特化 (`:>`, `specializes`, `subsets`) / 再定義 (`:>>`, `redefines`) /
-多重度 (`[n..m]` + `ordered` / `nonunique`) / 値 (`= expr`) /
-方向 (`in` / `out` / `inout`) など。
+`@Metadata` annotations / `#metadata` prefix / `filter` / `individual def` /
+specialization (`:>`, `specializes`, `subsets`) / redefinition (`:>>`, `redefines`) /
+multiplicity (`[n..m]` + `ordered` / `nonunique`) / values (`= expr`) /
+direction (`in` / `out` / `inout`), and more.
 
-未対応の構文はエラー回復しながら読み飛ばすため、部分的なモデルでも動作します。
-OMG 仕様付録 A の `SimpleVehicleModel` は構文上は全文をパースできます。
+Unsupported syntax is skipped with error recovery, so partially valid models still work.
+The OMG spec appendix A `SimpleVehicleModel` can be parsed in full syntactically.
 
-## 制限事項
+## Limitations
 
-- パーサは OMG SysML v2 仕様の実用的なサブセットです(KerML 固有層の
-  classifier / feature 等は未対応)。式(constraint / calc の本体)は不透明
-  テキストとして扱い、式の型チェックは行いません
-- 名前解決はスコープ・import・継承メンバーを考慮した近似実装です。可視性
-  (private / protected)は完全には強制しません
-- 同梱の標準ライブラリは最小サブセットです(完全な OMG ライブラリではありません)
-- 図のリネームは宣言名のみ変更します(参照箇所は追従しません)
+- The parser is a practical subset of the OMG SysML v2 spec (KerML foundation-layer
+  constructs such as classifier / feature are not supported). Expressions (constraint /
+  calc bodies) are treated as opaque text; no expression type-checking
+- Name resolution is an approximation that considers scope, import, and inherited
+  members. Visibility (private / protected) is not fully enforced
+- The bundled standard library is a minimal subset (not the full OMG library)
+- Diagram rename changes only the declaration name (references are not updated)

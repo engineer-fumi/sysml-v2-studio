@@ -6,6 +6,12 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **UI and docs translated to English** — extension commands, settings descriptions,
+  diagram panel, diagnostics, completion snippets, and all `docs/*.md` guides are now
+  in English. `README.ja.md` remains the Japanese README.
+
 ## [0.8.2] — 2026-07-07
 
 ### Fixed

@@ -68,7 +68,7 @@ export function registerDiagnostics(
       for (const c of f.result.root.children) {
         if (!c.name) continue;
         const owners = topLevelOwners.get(c.name) ?? [];
-        owners.push(f.builtin ? "標準ライブラリ" : f.name);
+        owners.push(f.builtin ? "standard library" : f.name);
         topLevelOwners.set(c.name, owners);
       }
     }
@@ -122,7 +122,7 @@ export function registerDiagnostics(
             push(
               c.nameStart,
               c.nameEnd ?? c.nameStart + c.name.length,
-              `トップレベル要素 '${c.name}' はグローバルスコープで衝突しています (${[...new Set(others)].join(", ")})`,
+              `Top-level element '${c.name}' conflicts in the global scope (${[...new Set(others)].join(", ")})`,
               sevByRule.duplicate,
               "duplicate"
             );
@@ -152,35 +152,35 @@ interface Snippet {
 }
 
 const SNIPPETS: Snippet[] = [
-  { label: "package", insert: "package ${1:Name} {\n\t$0\n}", detail: "package 定義" },
-  { label: "part def", insert: "part def ${1:Name} {\n\t$0\n}", detail: "part 定義" },
-  { label: "part", insert: "part ${1:name} : ${2:Type};", detail: "part 使用" },
-  { label: "attribute", insert: "attribute ${1:name} : ${2:Real};", detail: "属性" },
-  { label: "port def", insert: "port def ${1:Name} {\n\t$0\n}", detail: "port 定義" },
-  { label: "port", insert: "port ${1:name} : ${2:PortType};", detail: "port 使用" },
-  { label: "item def", insert: "item def ${1:Name};", detail: "item 定義" },
-  { label: "action def", insert: "action def ${1:Name} {\n\t$0\n}", detail: "action 定義" },
-  { label: "state def", insert: "state def ${1:Name} {\n\t$0\n}", detail: "状態機械定義" },
-  { label: "state", insert: "state ${1:name};", detail: "状態" },
+  { label: "package", insert: "package ${1:Name} {\n\t$0\n}", detail: "package definition" },
+  { label: "part def", insert: "part def ${1:Name} {\n\t$0\n}", detail: "part definition" },
+  { label: "part", insert: "part ${1:name} : ${2:Type};", detail: "part usage" },
+  { label: "attribute", insert: "attribute ${1:name} : ${2:Real};", detail: "attribute" },
+  { label: "port def", insert: "port def ${1:Name} {\n\t$0\n}", detail: "port definition" },
+  { label: "port", insert: "port ${1:name} : ${2:PortType};", detail: "port usage" },
+  { label: "item def", insert: "item def ${1:Name};", detail: "item definition" },
+  { label: "action def", insert: "action def ${1:Name} {\n\t$0\n}", detail: "action definition" },
+  { label: "state def", insert: "state def ${1:Name} {\n\t$0\n}", detail: "state machine definition" },
+  { label: "state", insert: "state ${1:name};", detail: "state" },
   {
     label: "transition",
     insert: "transition ${1:name} first ${2:source} accept ${3:trigger} then ${4:target};",
-    detail: "状態遷移",
+    detail: "state transition",
   },
   {
     label: "requirement def",
-    insert: "requirement def ${1:Name} {\n\tdoc /* ${2:説明} */\n\t$0\n}",
-    detail: "要求定義",
+    insert: "requirement def ${1:Name} {\n\tdoc /* ${2:description} */\n\t$0\n}",
+    detail: "requirement definition",
   },
-  { label: "connect", insert: "connect ${1:a.port} to ${2:b.port};", detail: "接続" },
-  { label: "bind", insert: "bind ${1:a} = ${2:b};", detail: "束縛" },
-  { label: "flow", insert: "flow of ${1:Item} from ${2:a.out} to ${3:b.in};", detail: "フロー" },
-  { label: "import", insert: "import ${1:Package}::*;", detail: "インポート" },
-  { label: "doc", insert: "doc /* ${1:説明} */", detail: "ドキュメント" },
-  { label: "perform action", insert: "perform action ${1:name};", detail: "アクション実行" },
-  { label: "exhibit state", insert: "exhibit state ${1:name} : ${2:Behavior};", detail: "状態の表出" },
-  { label: "satisfy requirement", insert: "satisfy requirement ${1:req} by ${2:element};", detail: "要求の充足" },
-  { label: "use case def", insert: "use case def ${1:Name} {\n\t$0\n}", detail: "ユースケース定義" },
+  { label: "connect", insert: "connect ${1:a.port} to ${2:b.port};", detail: "connection" },
+  { label: "bind", insert: "bind ${1:a} = ${2:b};", detail: "binding" },
+  { label: "flow", insert: "flow of ${1:Item} from ${2:a.out} to ${3:b.in};", detail: "flow" },
+  { label: "import", insert: "import ${1:Package}::*;", detail: "import" },
+  { label: "doc", insert: "doc /* ${1:description} */", detail: "documentation" },
+  { label: "perform action", insert: "perform action ${1:name};", detail: "perform action" },
+  { label: "exhibit state", insert: "exhibit state ${1:name} : ${2:Behavior};", detail: "exhibit state" },
+  { label: "satisfy requirement", insert: "satisfy requirement ${1:req} by ${2:element};", detail: "satisfy requirement" },
+  { label: "use case def", insert: "use case def ${1:Name} {\n\t$0\n}", detail: "use case definition" },
 ];
 
 export function registerCompletion(
