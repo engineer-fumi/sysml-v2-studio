@@ -29,14 +29,23 @@ const GROUPS: { name: string; dirs: string[]; exts: string[] }[] = [
 ];
 
 /**
- * Regression thresholds = parse errors measured on main at vendoring time
- * (v0.8.0, 2026-07-07). Lower them as coverage improves; raising one needs
- * an explicit decision in review.
+ * Regression thresholds = parse errors measured on main. Ratcheted down as
+ * grammar coverage improves; raising one needs an explicit decision in review.
+ *
+ * Baseline v0.8.0 (2026-07-07) was 10 / 14 / 22. Lowered here after the
+ * keyword-name, `bool`, `references`, `$`-root, `inverse`, `doc <short>` and
+ * alias fixes. The remaining tail is a documented set of harder constructs:
+ *   - higher-order lambda bodies `xs->collect{…}` / `x.?{…}` (Expressions)
+ *   - bare result expressions as members (`v.m`, `PassIf(…)`, `a == b`)
+ *   - `locale "…"` comment/rep clause; connector `::> a.x to b`; `intersects`
+ *     continuation; `binding {…}`; leading-multiplicity connector ends
+ *   - `Analysis Case Usage Example.sysml` — a `//`-line-comment that swallows a
+ *     value's closing `)` (unbalanced-paren runaway; a corpus-file quirk)
  */
 const MAX_ERRORS: Record<string, number> = {
-  "sysml-examples": 10,
-  "kerml-examples": 14,
-  "stdlib": 22,
+  "sysml-examples": 9,
+  "kerml-examples": 7,
+  "stdlib": 8,
 };
 
 function listFiles(dir: string, exts: string[], out: string[] = []): string[] {

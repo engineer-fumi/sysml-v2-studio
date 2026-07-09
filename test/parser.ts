@@ -274,6 +274,23 @@ test("KerML `bool` scalar-feature abbreviation parses as an attribute", () => {
   assert.strictEqual(guard.value, "true");
 });
 
+test("low-risk KerML/SysML grammar forms from the OMG corpus parse", () => {
+  const cases: [string, string][] = [
+    ["references clause", "part p { perform action shot[*] ordered references takePicture; }"],
+    ["$ root namespace", "package O { class E :> $::Objects::Object { feature :>> subs; } }"],
+    ["standalone inverse", "package I { inverse B::g of A::f; }"],
+    ["doc <shortname>", "class A { doc <a> /* documentation */ }"],
+    ["keyword short name", "attribute <var> vv : PowerUnit;"],
+    ["keyword alias name", "package P { alias multiplicity for degeneracy; }"],
+  ];
+  for (const [label, src] of cases) {
+    assert.deepStrictEqual(parseSysML(src).errors, [], label);
+  }
+  // the $-root name is preserved on the specialization
+  const e = find(parseSysML("package O { class E :> $::Objects::Object; }").root, "E");
+  assert.deepStrictEqual(e.specializes, ["$::Objects::Object"]);
+});
+
 test("captures expression bodies whole (lambdas, mixed statements)", () => {
   const r = parseSysML(`package P {
     calc total {

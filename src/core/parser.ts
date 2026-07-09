@@ -393,6 +393,7 @@ class Parser {
         case "featuring":
         case "typing":
         case "inverting":
+        case "inverse":
         case "unioning":
         case "unions":
         case "intersecting":
@@ -534,7 +535,9 @@ class Parser {
     this.next();
     const el = createElement("alias", startTok.start);
     el.modifiers = modifiers;
-    if (this.atIdentifier()) {
+    // the alias name may be a keyword (`alias multiplicity for degeneracy`);
+    // it is always followed by `for`, so accept any name token but not `for`
+    if (this.atNameToken() && !this.at("for")) {
       const t = this.next();
       el.name = unquoteName(t.text);
       el.nameStart = t.start;
@@ -547,8 +550,12 @@ class Parser {
 
   private parseDoc(parent: SysMLElement, startTok: Token): undefined {
     this.next(); // 'doc'
-    // optional name
-    if (this.atIdentifier()) this.next();
+    // optional `<short>` and/or name: `doc <a> /* … */`, `doc Name /* … */`
+    if (this.eat("<")) {
+      if (this.atNameToken()) this.next();
+      this.eat(">");
+    }
+    if (this.atNameToken()) this.next();
     const t = this.peek();
     if (t.type === "doc-comment") {
       this.next();
@@ -786,7 +793,10 @@ class Parser {
         el.modifiers.push(this.next().text);
         continue;
       }
-      if (this.eat(":>") || this.eat("specializes") || this.eat("subsets") || this.eat("::>")) {
+      if (
+        this.eat(":>") || this.eat("specializes") || this.eat("subsets") ||
+        this.eat("::>") || this.eat("references")
+      ) {
         el.specializes.push(this.qnameRef(el, "specialize", false, true));
         while (this.eat(",")) el.specializes.push(this.qnameRef(el, "specialize", false, true));
         continue;
@@ -1114,7 +1124,9 @@ class Parser {
   /** <short> name */
   private parseIdentification(el: SysMLElement): void {
     if (this.eat("<")) {
-      if (this.atIdentifier()) el.shortName = unquoteName(this.next().text);
+      // a short name may itself be a keyword (`<var>`, `<nat>`) or a quoted
+      // name (`<'nat/s'>`), not only a plain identifier
+      if (this.atNameToken()) el.shortName = unquoteName(this.next().text);
       this.eat(">");
     }
     if (this.atDeclName()) {
@@ -1205,12 +1217,19 @@ class Parser {
       prefix = "~";
     }
     const parts: string[] = [];
-    if (!this.atNameToken()) {
-      const t = this.peek();
-      this.error("名前が必要です", t.start, t.end);
-      return "";
+    // KerML root-namespace qualifier: `$::Objects::Object` starts at the global
+    // root `$`, then continues with `::`-separated segments
+    if (this.at("$")) {
+      this.next();
+      parts.push("$");
+    } else {
+      if (!this.atNameToken()) {
+        const t = this.peek();
+        this.error("名前が必要です", t.start, t.end);
+        return "";
+      }
+      parts.push(unquoteName(this.next().text));
     }
-    parts.push(unquoteName(this.next().text));
     for (;;) {
       if (this.at("::")) {
         const save = this.pos;
