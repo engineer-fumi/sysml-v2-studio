@@ -228,6 +228,10 @@ export function DiagramApp() {
         setMode("select");
         setConnectSource(undefined);
       }
+      if (e.key === "F2" && selected) {
+        e.preventDefault();
+        renameElement(selected);
+      }
       if (e.key === "Delete" && selected) deleteElement(selected);
     };
     window.addEventListener("keydown", onKey);
@@ -329,7 +333,16 @@ export function DiagramApp() {
     });
   };
 
+  /** double-click drills into a container: make it the diagram scope (use the
+   *  breadcrumb to go back). Rename now lives on the right-click menu / F2. */
   const handleElementDoubleClick = (el: SysMLElement) => {
+    if (rootCandidates.includes(el)) {
+      setRootKey(keyOf(el));
+      setSelected(el);
+    }
+  };
+
+  const renameElement = (el: SysMLElement) => {
     if (el.fileId === undefined || el.nameStart === undefined || !el.name) return;
     vscode.postMessage({
       type: "edit",
@@ -653,7 +666,7 @@ export function DiagramApp() {
               : "Click connection source"
             : mode.startsWith("add:")
               ? `Click where to add ${mode.slice(4)} — container or blank (diagram root) / Esc to cancel`
-              : "Drag to reposition / right-click for menu (connect, waypoints, line style, delete) / bottom-right and top-right handles to resize / Delete removes selection / Cmd+Z to undo"}
+              : "Double-click a block to zoom in · breadcrumb to go back · right-click for actions · drag to move · press ? for help"}
         </span>
       </div>
       <DiagramView
@@ -666,6 +679,7 @@ export function DiagramApp() {
         keyOf={keyOf}
         onElementClick={handleElementClick}
         onElementDoubleClick={handleElementDoubleClick}
+        onRenameElement={renameElement}
         onMoveBox={handleMoveBox}
         onResizeBox={handleResizeBox}
         onMovePort={handleMovePort}

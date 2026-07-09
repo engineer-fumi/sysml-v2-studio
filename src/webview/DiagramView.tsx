@@ -66,7 +66,10 @@ interface Props {
   offsets: LayoutOffsets;
   keyOf: (el: SysMLElement) => string;
   onElementClick: (el: SysMLElement) => void;
+  /** double-click a box: scope the diagram into it (drill down) */
   onElementDoubleClick: (el: SysMLElement) => void;
+  /** rename the element behind a box (context menu / F2) */
+  onRenameElement: (el: SysMLElement) => void;
   /** commit a box move (delta in diagram coordinates) */
   onMoveBox: (key: string, ddx: number, ddy: number) => void;
   /** commit a box resize to an absolute minimum size, with the box's final
@@ -538,6 +541,7 @@ export function DiagramView({
   keyOf,
   onElementClick,
   onElementDoubleClick,
+  onRenameElement,
   onMoveBox,
   onResizeBox,
   onMovePort,
@@ -558,6 +562,7 @@ export function DiagramView({
 }: Props) {
   const viewRef = useRef<HTMLDivElement>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
   const { view, onWheel: zoomWheel, beginPan, movePan, endPan, reset: resetView, fit: fitView } =
     usePanZoom();
   const svgRef = useRef<SVGSVGElement>(null);
@@ -586,6 +591,20 @@ export function DiagramView({
       routeEdge: onRouteEdge,
     },
   });
+
+  // "?" toggles the help legend; Escape closes it
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "?") {
+        e.preventDefault();
+        setShowHelp((v) => !v);
+      } else if (e.key === "Escape") {
+        setShowHelp(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useEffect(() => {
     if (!menu) return;
@@ -882,7 +901,7 @@ export function DiagramView({
       { label: "Connect from here (connect)", action: () => onStartConnect(el) },
     ];
     if (named && el.fileId !== undefined) {
-      items.push({ label: "Rename", action: () => onElementDoubleClick(el) });
+      items.push({ label: "Rename (F2)", action: () => onRenameElement(el) });
     }
     if (el.fileId !== undefined && el.kind !== "file") {
       items.push(
@@ -950,6 +969,13 @@ export function DiagramView({
   return (
     <div className="diagram-view" ref={viewRef}>
       <div className="diagram-toolbar">
+        <button
+          className={showHelp ? "active" : undefined}
+          onClick={() => setShowHelp((v) => !v)}
+          title="What is this diagram and how do I use it? (?)"
+        >
+          ? Help
+        </button>
         <button onClick={fit} title="Fit to view">⤢ Fit</button>
         <button onClick={resetView} title="Reset zoom">100%</button>
         <button onClick={exportSvg} title="Save as SVG">⭳ SVG</button>
@@ -1013,6 +1039,32 @@ export function DiagramView({
           </>
         )}
       </div>
+      {showHelp && (
+        <div className="diagram-help" role="dialog" aria-label="Diagram help">
+          <div className="diagram-help-card">
+            <div className="diagram-help-head">
+              <strong>SysML Diagram — quick help</strong>
+              <button className="diagram-help-close" onClick={() => setShowHelp(false)} title="Close (Esc)">✕</button>
+            </div>
+            <p className="diagram-help-lead">
+              This diagram is a live <em>projection</em> of your model. Edit the <code>.sysml</code> file
+              and it updates automatically — the picture never changes your model unless you use its edit tools.
+            </p>
+            <dl className="diagram-help-keys">
+              <dt>Double-click a block</dt><dd>Zoom in — make it the diagram scope</dd>
+              <dt>Breadcrumb (⌂ Entire model ›)</dt><dd>Go back up a level</dd>
+              <dt>Click</dt><dd>Select and reveal it in the editor</dd>
+              <dt>Right-click</dt><dd>Actions: connect, rename, delete, line style, waypoints</dd>
+              <dt>Drag · corner handles</dt><dd>Move a block · resize it</dd>
+              <dt>F2 · Delete · ⌘/Ctrl-Z</dt><dd>Rename · remove from model · undo layout edits</dd>
+            </dl>
+            <p className="diagram-help-lead">
+              Toolbar: pick a <strong>diagram kind</strong>, <strong>Collapse/Expand</strong> nesting,
+              toggle <strong>Ortho wires</strong> (orthogonal routing), and filter by <strong>Kinds</strong>.
+            </p>
+          </div>
+        </div>
+      )}
       <svg
         ref={svgRef}
         className="diagram-svg"
