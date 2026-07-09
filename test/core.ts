@@ -13,6 +13,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { createElement, qualifiedName, walk, SysMLElement } from "../src/core/ast";
 import { DiagramNode, DIAGRAM_KINDS, layoutDiagram, portOffsetKey } from "../src/core/layout";
+import { makeRouter, RouteBox } from "../src/core/edgeRouter";
 import { parseSysML } from "../src/core/parser";
 import { Resolver } from "../src/core/resolve";
 import { STDLIB_FILES } from "../src/core/stdlib";
@@ -264,6 +265,72 @@ test("type filter hides boxes of the unchecked kind", () => {
   // an empty filter is a no-op (same box count as the unfiltered layout)
   const noop = layoutDiagram(root, { kind: "bdd", hiddenKinds: new Set() });
   assert.strictEqual(boxes(noop).length, boxes(base).length, "empty filter shows everything");
+});
+
+test("orthogonal router avoids an obstacle box and stays axis-aligned", () => {
+  // A ...... C with B sitting on the straight A→C line — the router must go around B
+  const mk = (x: number, y: number, w: number, h: number): RouteBox =>
+    ({ x, y, w, h, el: createElement("part def") }); // parentless els → all unrelated
+  const A = mk(0, 0, 100, 40);
+  const C = mk(300, 0, 100, 40);
+  const B = mk(150, -20, 100, 80); // spans y −20..60, blocks the y≈20 straight line
+  const router = makeRouter([A, B, C], { margin: 8 });
+  const path = router.route(A, C);
+  assert.ok(path && path.length >= 2, "a route exists around the obstacle");
+
+  // every segment is horizontal or vertical
+  for (let i = 0; i + 1 < path!.length; i++) {
+    const dx = Math.abs(path![i + 1].x - path![i].x);
+    const dy = Math.abs(path![i + 1].y - path![i].y);
+    assert.ok(dx < 0.5 || dy < 0.5, "segments are axis-aligned");
+  }
+  // endpoints sit on the box borders, not buried inside
+  const inside = (p: { x: number; y: number }, r: RouteBox) =>
+    p.x > r.x + 0.5 && p.x < r.x + r.w - 0.5 && p.y > r.y + 0.5 && p.y < r.y + r.h - 0.5;
+  assert.ok(!inside(path![0], A) && !inside(path![path!.length - 1], C), "endpoints on borders");
+  // no segment cuts through B's interior
+  const clearsB = (p: { x: number; y: number }, q: { x: number; y: number }) => {
+    const lo = { x: Math.min(p.x, q.x), y: Math.min(p.y, q.y) };
+    const hi = { x: Math.max(p.x, q.x), y: Math.max(p.y, q.y) };
+    return hi.x <= B.x + 0.5 || lo.x >= B.x + B.w - 0.5 || hi.y <= B.y + 0.5 || lo.y >= B.y + B.h - 0.5;
+  };
+  for (let i = 0; i + 1 < path!.length; i++) {
+    assert.ok(clearsB(path![i], path![i + 1]), "no segment passes through the obstacle");
+  }
+});
+
+test("autoRoute fills orthogonal waypoints; off falls back to straight; manual wins", () => {
+  const model = miniModel(`package P {
+    part def Vehicle { part e : Engine; part t : Transmission; }
+    part def Engine;
+    part def Transmission;
+  }`);
+  const straight = layoutDiagram(model, { kind: "bdd", keyOf: keyByQName, autoRoute: false });
+  const routed = layoutDiagram(model, { kind: "bdd", keyOf: keyByQName, autoRoute: true });
+
+  assert.ok(straight.edges.every((e) => !e.points?.length), "no waypoints when autoRoute is off");
+  const routedEdges = routed.edges.filter((e) => e.points?.length);
+  assert.ok(routedEdges.length > 0, "autoRoute adds waypoints to at least one edge");
+  for (const e of routedEdges) {
+    const pts = [{ x: e.x1, y: e.y1 }, ...e.points!, { x: e.x2, y: e.y2 }];
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const dx = Math.abs(pts[i + 1].x - pts[i].x);
+      const dy = Math.abs(pts[i + 1].y - pts[i].y);
+      assert.ok(dx < 0.5 || dy < 0.5, "auto-routed wire is orthogonal");
+    }
+  }
+
+  // a manually-routed edge keeps its waypoints — the router must not touch it
+  const target = routed.edges.find((e) => e.key && e.a && e.b)!;
+  const manualWp = [{ x: 12, y: 34 }];
+  const withManual = layoutDiagram(model, {
+    kind: "bdd",
+    keyOf: keyByQName,
+    autoRoute: true,
+    offsets: { [target.key!]: { dx: 0, dy: 0, wp: manualWp } },
+  });
+  const same = withManual.edges.find((e) => e.key === target.key)!;
+  assert.deepStrictEqual(same.points, manualWp, "manual waypoints override the auto-router");
 });
 
 test("use case view merges same-named actors into one figure", () => {
