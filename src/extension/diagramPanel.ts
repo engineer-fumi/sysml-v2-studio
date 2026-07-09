@@ -119,6 +119,19 @@ export class DiagramPanel {
         return;
       }
     }
+    // scope the new diagram to the element under the editor cursor, so opening a
+    // diagram on a large workspace starts focused instead of dumping everything
+    let initialScope: { fileId: number; offset: number } | undefined;
+    const editor = vscode.window.activeTextEditor;
+    if (editor && editor.document.languageId === "sysml") {
+      const entry = index.get(editor.document.uri);
+      if (entry) {
+        initialScope = {
+          fileId: entry.fileId,
+          offset: editor.document.offsetAt(editor.selection.active),
+        };
+      }
+    }
     const panel = vscode.window.createWebviewPanel(
       "sysmlDiagram",
       `SysML ${diagramKindLabel(kind)}`,
@@ -129,14 +142,15 @@ export class DiagramPanel {
         localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, "dist")],
       }
     );
-    DiagramPanel.panels.add(new DiagramPanel(panel, context, index, kind));
+    DiagramPanel.panels.add(new DiagramPanel(panel, context, index, kind, initialScope));
   }
 
   private constructor(
     panel: vscode.WebviewPanel,
     context: vscode.ExtensionContext,
     private index: ModelIndex,
-    private kind: DiagramKind
+    private kind: DiagramKind,
+    private initialScope?: { fileId: number; offset: number }
   ) {
     this.panel = panel;
     panel.webview.html = this.html(context);
@@ -210,11 +224,12 @@ export class DiagramPanel {
       ast: stripParents(f.result.root),
     }));
     const layouts = await this.loadLayouts();
-    // the kind accompanies only the first model so later pushes don't undo a
-    // kind switch made in the webview
+    // the kind + initial cursor scope accompany only the first model so later
+    // pushes don't undo a kind switch or re-scope made in the webview
     const kind = this.kindSent ? undefined : this.kind;
+    const scopeAt = this.kindSent ? undefined : this.initialScope;
     this.kindSent = true;
-    await this.panel.webview.postMessage({ type: "model", files, layouts, kind });
+    await this.panel.webview.postMessage({ type: "model", files, layouts, kind, scopeAt });
   }
 
   // ---- layout sidecar ----------------------------------------------------

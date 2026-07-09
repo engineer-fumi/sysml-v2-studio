@@ -52,6 +52,49 @@ body,
   flex-shrink: 0;
 }
 
+.scope-breadcrumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  min-width: 0;
+  font-size: 11.5px;
+}
+
+.scope-breadcrumbs .crumb-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.scope-breadcrumbs .crumb-sep {
+  color: #6c7086;
+}
+
+.scope-breadcrumbs .crumb {
+  background: transparent;
+  color: #89b4fa;
+  border: none;
+  border-radius: 4px;
+  font-size: 11.5px;
+  padding: 2px 5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.scope-breadcrumbs .crumb:hover:not(:disabled) {
+  background: #313244;
+}
+
+.scope-breadcrumbs .crumb:disabled {
+  cursor: default;
+}
+
+.scope-breadcrumbs .crumb-current {
+  color: #cdd6f4;
+  font-weight: 600;
+}
+
 .file-count {
   margin-left: auto;
   font-size: 11px;
