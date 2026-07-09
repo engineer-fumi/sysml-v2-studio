@@ -233,6 +233,39 @@ test("collapsing a box hides its child boxes and re-anchors edges", () => {
   }
 });
 
+test("type filter hides boxes of the unchecked kind", () => {
+  const boxes = (l: { nodes: DiagramNode[] }): DiagramNode[] => {
+    const out: DiagramNode[] = [];
+    const stack = [...l.nodes];
+    while (stack.length) {
+      const n = stack.shift()!;
+      out.push(n);
+      stack.push(...n.children);
+    }
+    return out;
+  };
+  const base = layoutDiagram(root, { kind: "bdd" });
+  const baseKinds = new Set(boxes(base).map((n) => n.el.kind));
+  // pick a primary leaf kind that is present (part def is the bdd's staple)
+  const target = baseKinds.has("part def")
+    ? "part def"
+    : [...baseKinds].find((k) => k !== "package" && k !== "library package");
+  assert.ok(target, "a filterable box kind is present in the bdd");
+
+  const filtered = layoutDiagram(root, { kind: "bdd", hiddenKinds: new Set([target]) });
+  assert.ok(
+    !boxes(filtered).some((n) => n.el.kind === target),
+    `no ${target} box survives the type filter`
+  );
+  assert.ok(
+    boxes(filtered).length < boxes(base).length,
+    "the filtered diagram has fewer boxes"
+  );
+  // an empty filter is a no-op (same box count as the unfiltered layout)
+  const noop = layoutDiagram(root, { kind: "bdd", hiddenKinds: new Set() });
+  assert.strictEqual(boxes(noop).length, boxes(base).length, "empty filter shows everything");
+});
+
 test("use case view merges same-named actors into one figure", () => {
   const pkg = find(root, "RobotUseCases", "package");
   const l = layoutDiagram(pkg, { kind: "uc" });
