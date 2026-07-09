@@ -1,7 +1,7 @@
 {
   "name": "sysml-v2-studio",
   "displayName": "SysML v2 Studio",
-  "description": "SysML v2 (.sysml / .kerml) のオーサリング・可視化・編集: 言語サポート・8種の編集可能なダイアグラム・Claude (MCP) 連携",
+  "description": "SysML v2 (.sysml / .kerml) authoring, visualization, and editing: language support, 8 editable diagram kinds, Claude (MCP) integration",
   "version": "0.8.2",
   "publisher": "engineer-fumi",
   "license": "MIT",
@@ -69,12 +69,12 @@
     "commands": [
       {
         "command": "sysml.openDiagram",
-        "title": "SysML: ダイアグラムを開く",
+        "title": "SysML: Open Diagram",
         "icon": "$(type-hierarchy-sub)"
       },
       {
         "command": "sysml.openDiagramAs",
-        "title": "SysML: 図の種類を選んで開く",
+        "title": "SysML: Open Diagram by Kind",
         "icon": "$(type-hierarchy)"
       }
     ],
@@ -107,7 +107,7 @@
             "off"
           ],
           "default": "warning",
-          "description": "未解決の参照 (型・特化・接続先など) の診断レベル"
+          "description": "Diagnostic level for unresolved references (types, specializations, connection targets, etc.)"
         },
         "sysml.validation.duplicateNames": {
           "type": "string",
@@ -118,7 +118,7 @@
             "off"
           ],
           "default": "error",
-          "description": "同一スコープ内の重複名の診断レベル"
+          "description": "Diagnostic level for duplicate names in the same scope"
         },
         "sysml.validation.typeConformance": {
           "type": "string",
@@ -129,7 +129,7 @@
             "off"
           ],
           "default": "warning",
-          "description": "型付け・特化の種類整合 (part は part def で型付け 等) の診断レベル"
+          "description": "Diagnostic level for typing and specialization kind conformance (e.g. part must be typed by part def)"
         },
         "sysml.validation.shadowing": {
           "type": "string",
@@ -140,7 +140,7 @@
             "off"
           ],
           "default": "warning",
-          "description": "継承メンバーを同名宣言で隠している場合 (:>> による再定義を推奨) の診断レベル"
+          "description": "Diagnostic level when an inherited member is hidden by a same-named declaration (redefine with :>> is recommended)"
         },
         "sysml.validation.importVisibility": {
           "type": "string",
@@ -151,7 +151,7 @@
             "off"
           ],
           "default": "warning",
-          "description": "import の可視性 (public / private) が明示されていない場合の診断レベル"
+          "description": "Diagnostic level when the visibility (public/private) of an import is not explicitly specified"
         },
         "sysml.validation.typeChecking": {
           "type": "string",
@@ -162,7 +162,7 @@
             "off"
           ],
           "default": "warning",
-          "description": "式の型チェック (制約本体は Boolean、値は宣言型に適合 等) の診断レベル。型が確実に判明した場合のみ報告します"
+          "description": "The diagnostic level for type checking of an expression (e.g., constraint body is Boolean, value conforms to declared type, etc.). Only reports if the type is definitively determined."
         }
       }
     }

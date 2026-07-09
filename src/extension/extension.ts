@@ -46,7 +46,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           description: k.description,
           id: k.id as DiagramKind,
         })),
-        { placeHolder: "開く図の種類を選択" }
+        { placeHolder: "Select diagram kind to open" }
       );
       if (picked) DiagramPanel.createOrShow(context, index, picked.id);
     })

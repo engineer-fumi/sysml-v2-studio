@@ -1,65 +1,65 @@
-# ダイアグラム機能
+# Diagram features
 
-エディタタイトルの図アイコン、またはコマンド **「SysML: ダイアグラムを開く」**
-で開きます。ワークスペースの全 `.sysml` を結合した単一モデルを描画し、
-ファイルをまたぐ `import` / 参照が解決されます。
+Open via the diagram icon in the editor title bar, or the command **"SysML: Open Diagram"**.
+The panel renders a single combined model from all `.sysml` files in the workspace;
+cross-file `import` / references are resolved.
 
-## 図の種類
+## Diagram kinds
 
-コマンド **「SysML: 図の種類を選んで開く」** またはパネル内のセレクタで切り替え。
-種類ごとに別パネルで並べて開けます。
+Switch via **"SysML: Open Diagram by Kind"** or the selector in the panel.
+Each kind can be opened in a separate panel side by side.
 
-| 種類 | 内容 |
+| Kind | Content |
 |---|---|
-| 全体図 | モデル全体(構造・振る舞いのすべて) |
-| ブロック定義図 (BDD) | 構造定義 (part def 等) と特化(白抜き三角)・コンポジション(黒菱形)。usage の内部構造からも型レベルの組成を推論し、`«import»` 依存も表示 |
-| 内部ブロック図 (IBD) | 内部構造を持つブロックの part 構成と connect / flow / port。port は型定義から継承して表示 |
-| 要求図 | 要求(doc 本文付き)と satisfy / verify 関係 |
-| ユースケース図 | ユースケース(楕円)と actor(人型・同名は統合)、subject 境界、perform / include |
-| 状態遷移図 | 状態機械(状態と transition) |
-| アクティビティ図 | アクションと succession / flow |
-| シーケンス図 | ライフライン(part)とメッセージ(flow)を時系列に表示(仕様準拠: Lifeline=PartUsage / Message=Flow) |
+| Overview | Entire model (all structure and behavior) |
+| Block Definition Diagram (BDD) | Structural definitions (part def, etc.) with specialization (hollow triangle) and composition (filled diamond). Type-level composition is inferred from usage internals; `«import»` dependencies are shown |
+| Internal Block Diagram (IBD) | Part composition and connect / flow / port inside blocks with internal structure. Ports are inherited from type definitions |
+| Requirement Diagram | Requirements (with doc body) and satisfy / verify relationships |
+| Use Case Diagram | Use cases (ellipses) and actors (stick figures; same names merged), subject boundary, perform / include |
+| State Machine Diagram | State machines (states and transitions) |
+| Activity Diagram | Actions and succession / flow |
+| Sequence Diagram | Lifelines (parts) and messages (flow) in chronological order (spec-aligned: Lifeline=PartUsage / Message=Flow) |
 
-## エディタ連携
+## Editor integration
 
-- **双方向同期**: 図の要素クリック → 該当ソースへジャンプ / エディタのカーソル
-  移動 → 図の要素をハイライト
-- 編集すると図は自動で追従更新
-- パン / ズーム / Fit / **SVG エクスポート**
+- **Two-way sync**: click diagram element → jump to source / move editor cursor →
+  highlight element in diagram
+- Diagram updates automatically when the model is edited
+- Pan / zoom / Fit / **SVG export**
 
-## 図からのモデル編集(テキストへ書き戻し)
+## Model editing from the diagram (written back to text)
 
-- **接続**: 2 要素を順にクリック、または要素を右クリック →「ここから接続」で
-  適切なスコープに `connect a to b;` を挿入
-- **追加**: 「+ 追加…」で usage / def / package を選び、コンテナ(または空白=
-  図ルート)をクリックして挿入
-- ダブルクリックで宣言名のリネーム、Delete で要素・線を削除
-- アンドゥは VS Code 標準(テキスト編集として)
+- **Connect**: click two elements in order, or right-click an element → **Connect from here**
+  to insert `connect a to b;` in the appropriate scope
+- **Add**: choose usage / def / package via **+ Add…**, then click a container (or
+  blank = diagram root) to insert
+- Double-click to rename a declaration; Delete removes elements and edges
+- Undo uses standard VS Code (as text edits)
 
-## 手動レイアウト
+## Manual layout
 
-- **自由配置**: 名前付きブロックはネストの深さに関係なくドラッグで移動。親
-  ボックスは子を含むよう自動拡張し、接続線も追従
-- **サイズ変更**: 右下・右上ハンドルのドラッグ(右上は上方向に拡大)。手動
-  サイズは「最低サイズ」として保持され、子を動かしても枠は不必要に膨らまない
-- **port の配置**: port をドラッグでボックス四辺の任意位置へ
-- **線のルーティング**: 線本体ドラッグで曲げ、右クリックメニューで中継点の
-  追加/削除、端点(付け根)のドラッグ、線種(直線 / 折れ線(直角・矢印は辺に
-  垂直) / 曲線)の切替
-- **Undo/Redo**: 図側の操作は `Cmd/Ctrl+Z`(ツールバーにもボタン)
+- **Free placement**: named blocks can be dragged regardless of nesting depth. Parent
+  boxes auto-expand to contain children; connection lines follow
+- **Resize**: drag bottom-right or top-right handles (top-right expands upward). Manual
+  size is kept as a minimum; moving children does not unnecessarily inflate the frame
+- **Port placement**: drag ports to any position on a box edge
+- **Edge routing**: drag the line body to bend it; context menu to add/remove waypoints;
+  drag endpoints (attachment points); switch line style (straight / orthogonal
+  (right angles; arrowheads perpendicular to edges) / curve)
+- **Undo/Redo**: diagram-side operations via `Cmd/Ctrl+Z` (toolbar buttons too)
 
-### 描画ファイル(`.sysml-layout.json`)
+### Layout file (`.sysml-layout.json`)
 
-配置・サイズ・port 位置・線の経路/線種は、ワークスペース直下の
-`.sysml-layout.json`(サイドカー)に図種別ごとに自動保存されます。
+Position, size, port placement, and edge routing/style are auto-saved per diagram kind
+in `.sysml-layout.json` (sidecar) at the workspace root.
 
-- 「ファイル名#限定名 → オフセット」で保存されるため、**テキスト編集で
-  モデルが変わっても配置は名前で追従**します
-- モデル(`.sysml`)と描画(`.sysml-layout.json`)が分離しているので git で
-  共有でき、外部変更(pull 等)は図へ自動反映されます
-- SVG エクスポートと合わせて、手作業の作図ツールを置き換えられます
+- Stored as `fileName#qualifiedName → offset`, so **layout follows names even when
+  the model changes via text edits**
+- Model (`.sysml`) and layout (`.sysml-layout.json`) are separate, so they can be
+  shared via git; external changes (pull, etc.) are reflected in the diagram automatically
+- Together with SVG export, this can replace manual drawing tools
 
-## マルチファイル / リモート
+## Multi-file / remote
 
-- ワークスペース内の `.sysml` / `.kerml` を自動インデックス(追加・変更・削除を監視)
-- リモートのプロジェクトは **Remote-SSH / WSL / Dev Containers** でそのまま動作
+- Automatically indexes `.sysml` / `.kerml` in the workspace (watches add / change / delete)
+- Remote projects work as-is with **Remote-SSH / WSL / Dev Containers**

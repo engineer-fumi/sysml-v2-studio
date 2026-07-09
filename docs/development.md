@@ -1,113 +1,113 @@
-# 開発ガイド
+# Development guide
 
-## アーキテクチャ
+## Architecture
 
 ```
-syntaxes/sysml.tmLanguage.json   # TextMate 文法 (ハイライト)
-language-configuration.json      # コメント・括弧・インデント設定
+syntaxes/sysml.tmLanguage.json   # TextMate grammar (highlighting)
+language-configuration.json      # Comments, brackets, indentation
 src/
-├── core/                  # エディタ非依存のコア (VS Code 非依存・テスト容易)
-│   ├── lexer.ts           #   トークナイザ
-│   ├── parser.ts          #   再帰下降パーサ (エラー回復付き)
-│   ├── ast.ts             #   簡易 AST
-│   ├── resolve.ts         #   名前解決 (スコープ / import / 継承)
-│   ├── validate.ts        #   意味検証
-│   ├── stdlib.ts          #   同梱標準ライブラリ (最小サブセット)
-│   ├── viewSpecs.ts       #   図種別ごとの表示設定 (VIEW_SPECS)
-│   ├── layout.ts          #   ダイアグラムレイアウト
-│   └── serialize.ts       #   webview への AST 受け渡し
-├── extension/             # 拡張ホスト側
-│   ├── extension.ts       #   エントリポイント
-│   ├── modelIndex.ts      #   ワークスペース全体のモデルインデックス
-│   ├── languageFeatures.ts  # 診断・補完・シンボル・定義・ホバー
-│   └── diagramPanel.ts    #   ダイアグラム Webview パネル
-├── mcp/                   # Claude (MCP) サーバ (VS Code/SDK 非依存)
-│   ├── modelStore.ts     #   fs ベースのモデルインデックス (ModelIndex の Node 版)
-│   ├── tools.ts          #   ツール定義 + 実装 (core のみに依存・単体試験可)
-│   └── server.ts         #   JSON-RPC 2.0 over stdio の薄い配線
+├── core/                  # Editor-independent core (no VS Code dependency; easy to test)
+│   ├── lexer.ts           #   Tokenizer
+│   ├── parser.ts          #   Recursive-descent parser (with error recovery)
+│   ├── ast.ts             #   Lightweight AST
+│   ├── resolve.ts         #   Name resolution (scope / import / inheritance)
+│   ├── validate.ts        #   Semantic validation
+│   ├── stdlib.ts          #   Bundled standard library (minimal subset)
+│   ├── viewSpecs.ts       #   Per-diagram-kind view config (VIEW_SPECS)
+│   ├── layout.ts          #   Diagram layout
+│   └── serialize.ts       #   AST handoff to webview
+├── extension/             # Extension host side
+│   ├── extension.ts       #   Entry point
+│   ├── modelIndex.ts      #   Workspace-wide model index
+│   ├── languageFeatures.ts  # Diagnostics, completion, symbols, definition, hover
+│   └── diagramPanel.ts    #   Diagram webview panel
+├── mcp/                   # Claude (MCP) server (no VS Code/SDK dependency)
+│   ├── modelStore.ts     #   fs-based model index (Node version of ModelIndex)
+│   ├── tools.ts          #   Tool definitions + implementation (depends on core only; unit-testable)
+│   └── server.ts         #   Thin JSON-RPC 2.0 over stdio wiring
 └── webview/               # Webview (React + SVG)
-    ├── DiagramApp.tsx     #   メッセージング・ルート選択
-    ├── DiagramView.tsx    #   SVG 描画
-    ├── diagramGeometry.ts #   純粋幾何 (パス生成・境界計算)
-    ├── diagramInteractions.ts # 純粋な操作計算 (リサイズ等)
-    ├── usePanZoom.ts       #   ビュー (パン/ズーム) フック
-    └── useDiagramDrag.ts   #   ドラッグ配送フック
-samples/                   # サンプルモデル (複数ファイル構成の例を含む)
-samples/omg/               # OMG 公式サンプル (SysML-v2-Release より, EPL-2.0)
-test/                      # 各層の自動試験
-scripts/                   # デモ画像・アイコン生成スクリプト
+    ├── DiagramApp.tsx     #   Messaging, root selection
+    ├── DiagramView.tsx    #   SVG rendering
+    ├── diagramGeometry.ts #   Pure geometry (path generation, bounds)
+    ├── diagramInteractions.ts # Pure interaction math (resize, etc.)
+    ├── usePanZoom.ts       #   View (pan/zoom) hook
+    └── useDiagramDrag.ts   #   Drag delivery hook
+samples/                   # Sample models (including multi-file examples)
+samples/omg/               # Official OMG samples (from SysML-v2-Release, EPL-2.0)
+test/                      # Automated tests per layer
+scripts/                   # Demo image / icon generation scripts
 ```
 
-コアは VS Code に依存しないため、パーサ・リゾルバ・レイアウトはブラウザや
-Node 単体でも動き、`webview/` は postMessage 越しにコアの出力を描画します。
-同じ理由で `mcp/` の MCP サーバも `core/` をそのまま再利用でき、診断や図構造は
-エディタ表示と一致します(→ [Claude (MCP) 連携ガイド](mcp.md))。
+The core does not depend on VS Code, so parser, resolver, and layout run in the browser
+or Node alone; `webview/` renders core output over postMessage.
+For the same reason, the `mcp/` server reuses `core/` directly, so diagnostics and
+diagram structure match the editor (→ [Claude (MCP) integration guide](mcp.md)).
 
-## ビルド
+## Build
 
 ```bash
 npm install
-npm run check     # 型チェック (tsc --noEmit)
-npm run build     # 型チェック + esbuild バンドル (dist/extension.js, dist/webview.js)
-npm run build:mcp # MCP サーバを単一ファイルにバンドル (dist/mcp.cjs)
-npm run watch     # esbuild ウォッチ
+npm run check     # Type-check (tsc --noEmit)
+npm run build     # Type-check + esbuild bundle (dist/extension.js, dist/webview.js)
+npm run build:mcp # Bundle MCP server into a single file (dist/mcp.cjs)
+npm run watch     # esbuild watch
 ```
 
-開発時は VS Code でこのリポジトリを開いて **F5**(`samples/` を開いた拡張開発
-ホストが起動します)。
+During development, open this repo in VS Code and press **F5** (extension development
+host launches with `samples/` open).
 
-## テスト (5層・CI: GitHub Actions)
+## Tests (5 layers · CI: GitHub Actions)
 
 ```bash
-npm run test:unit   # ユニット: パーサ/リゾルバ・レイアウト・幾何・React フック・
-                    #           ファズ (不正入力でクラッシュ/ハングしない)
-npm run test:e2e    # Webview E2E: 実ブラウザで描画し境界外ドラッグ等の
-                    #              敵対操作で壊れないか (Playwright)
-npm run test:vscode # 統合: 本物の VS Code 拡張ホストで言語機能を検証
-npm run test:ui     # UI E2E: 実 VS Code を Selenium で操作 (vscode-extension-tester)
+npm run test:unit   # Unit: parser/resolver, layout, geometry, React hooks,
+                    #        fuzz (no crash/hang on invalid input)
+npm run test:e2e    # Webview E2E: real browser rendering; hostile ops like
+                    #              off-bounds drag must not break (Playwright)
+npm run test:vscode # Integration: language features in real VS Code extension host
+npm run test:ui     # UI E2E: real VS Code driven by Selenium (vscode-extension-tester)
 ```
 
-個別ターゲット: `test:core` / `test:geometry` / `test:parser` / `test:hooks` /
-`test:fuzz` / `test:mcp`(MCP ツール層)。ファズの反復数は環境変数 `FUZZ_ITERS`
-で調整できます。
-`test:e2e` / `test:ui` は初回にブラウザや VS Code を取得します。
+Individual targets: `test:core` / `test:geometry` / `test:parser` / `test:hooks` /
+`test:fuzz` / `test:mcp` (MCP tool layer). Fuzz iteration count is adjustable via
+`FUZZ_ITERS`.
+`test:e2e` / `test:ui` download a browser or VS Code on first run.
 
-## デモ画像 / アイコンの再生成
+## Regenerating demo images / icon
 
 ```bash
-npm run gen:screenshots   # docs/images/diagram-*.png を再生成 (Playwright)
-npm run gen:icon          # media/icon.png を再生成
+npm run gen:screenshots   # Regenerate docs/images/diagram-*.png (Playwright)
+npm run gen:icon          # Regenerate media/icon.png
 ```
 
-## パッケージング / 公開
+## Packaging / publishing
 
-### リリース(自動・推奨)
+### Release (automated · recommended)
 
-`package.json` の `version` を上げて `v<version>` タグを push するだけで、
-GitHub Actions が **3 つすべて**を公開します:
+Bump `version` in `package.json` and push a `v<version>` tag; GitHub Actions publishes
+**all three**:
 
-1. `CHANGELOG.md` を更新し、`package.json` の `version` を上げて main にマージ
-2. `git tag v<version> && git push origin v<version>`(例 `v0.8.0`)
-3. 自動公開:
-   - **VS Code Marketplace** + **Open VSX**(`publish-extension.yml`、`release` 環境の承認後)
-   - **npm `@engineer-fumi/sysml-v2-mcp`**(`publish-mcp.yml`、OIDC トークンレス)
-   - **GitHub Release**(`github-release.yml`、`CHANGELOG.md` の該当節をノート化。
-     シークレット不要・承認ゲートなし)
+1. Update `CHANGELOG.md`, bump `package.json` `version`, merge to main
+2. `git tag v<version> && git push origin v<version>` (e.g. `v0.8.0`)
+3. Automated publish:
+   - **VS Code Marketplace** + **Open VSX** (`publish-extension.yml`, after `release` environment approval)
+   - **npm `@engineer-fumi/sysml-v2-mcp`** (`publish-mcp.yml`, OIDC tokenless)
+   - **GitHub Release** (`github-release.yml`, notes from the matching `CHANGELOG.md` section.
+     No secrets · no approval gate)
 
-初回のみ必要な設定(リポジトリ → Settings → Environments → `release`):
-- Secret `VSCE_PAT`(Azure DevOps PAT、スコープ *Marketplace > Manage*、有効期限つき)
-- 任意: Secret `OVSX_PAT`(Open VSX 公開も行う場合。無ければ Open VSX はスキップ)
-- 承認制にするため required reviewers を設定(長期 PAT をレビューでゲート)
+One-time setup (repo → Settings → Environments → `release`):
+- Secret `VSCE_PAT` (Azure DevOps PAT, scope *Marketplace > Manage*, with expiry)
+- Optional: Secret `OVSX_PAT` (for Open VSX; skipped if absent)
+- Set required reviewers to gate long-lived PATs
 
-npm 側の Trusted Publisher 設定は [docs/mcp.md](mcp.md) を参照。
+For npm Trusted Publisher setup, see [docs/mcp.md](mcp.md).
 
-### ローカルでパッケージング / 手動公開
+### Local packaging / manual publish
 
 ```bash
-npm run package           # sysml-v2-studio-<version>.vsix を生成 (MCP サーバ同梱)
-code --install-extension sysml-v2-studio-<version>.vsix   # ローカル導入
+npm run package           # Generate sysml-v2-studio-<version>.vsix (MCP server bundled)
+code --install-extension sysml-v2-studio-<version>.vsix   # Local install
 
-# Marketplace へ手動公開 (発行者の Personal Access Token が必要)
+# Manual Marketplace publish (publisher Personal Access Token required)
 npx @vscode/vsce login engineer-fumi
-npx @vscode/vsce publish        # package.json の version で公開
+npx @vscode/vsce publish        # Publish at package.json version
 ```

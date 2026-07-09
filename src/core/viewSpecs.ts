@@ -32,14 +32,14 @@ export type DiagramKind =
   | "seq";
 
 export const DIAGRAM_KINDS: { id: DiagramKind; label: string; description: string }[] = [
-  { id: "general", label: "全体図", description: "モデル全体 (構造・振る舞いのすべて)" },
-  { id: "bdd", label: "ブロック定義図", description: "構造定義 (part def 等) と特化・コンポジション関係" },
-  { id: "ibd", label: "内部ブロック図", description: "ブロック内部の part 構成と接続 (connect / flow / port)" },
-  { id: "req", label: "要求図", description: "要求と satisfy / verify 関係" },
-  { id: "uc", label: "ユースケース図", description: "ユースケースと perform / include 関係" },
-  { id: "state", label: "状態遷移図", description: "状態機械 (状態と transition)" },
-  { id: "action", label: "アクティビティ図", description: "アクションと succession / flow" },
-  { id: "seq", label: "シーケンス図", description: "part 間のメッセージ (flow / message) を時系列表示" },
+  { id: "general", label: "Overview", description: "Entire model (all structure and behavior)" },
+  { id: "bdd", label: "Block Definition Diagram", description: "Structural definitions (part def, etc.) and specialization / composition relationships" },
+  { id: "ibd", label: "Internal Block Diagram", description: "Part composition and connections inside a block (connect / flow / port)" },
+  { id: "req", label: "Requirement Diagram", description: "Requirements and satisfy / verify relationships" },
+  { id: "uc", label: "Use Case Diagram", description: "Use cases and perform / include relationships" },
+  { id: "state", label: "State Machine Diagram", description: "State machines (states and transitions)" },
+  { id: "action", label: "Activity Diagram", description: "Actions and succession / flow" },
+  { id: "seq", label: "Sequence Diagram", description: "Messages between parts (flow / message) shown chronologically" },
 ];
 
 export function diagramKindLabel(kind: DiagramKind): string {
