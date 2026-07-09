@@ -58,6 +58,10 @@ export interface DiagramNode {
   ports: DiagramPort[];
   children: DiagramNode[];
   depth: number;
+  /** true when this box has child boxes that can be collapsed / expanded */
+  collapsible?: boolean;
+  /** true when the child boxes are currently hidden (collapsed) */
+  collapsed?: boolean;
   /** pseudo-nodes used as edge anchors for the ports (kept in sync on shift) */
   portBoxes?: DiagramNode[];
 }
@@ -261,6 +265,8 @@ interface RelNode {
   children: RelNode[];
   childPos: { x: number; y: number }[];
   headerH: number;
+  collapsible?: boolean;
+  collapsed?: boolean;
 }
 
 /** arrange child boxes in rows (wrapping for a pleasant aspect ratio) and
@@ -356,6 +362,12 @@ function measure(el: SysMLElement, depth: number, ctx: ViewContext): RelNode {
   // package-level usages) would read as diagram content, so they are hidden
   const suppressText = spec.packageText === false && PACKAGE_KINDS.includes(el.kind);
 
+  // saved layout entry for this box (also used for manual size below)
+  const o = opts.offsets && opts.keyOf ? opts.offsets[opts.keyOf(el)] : undefined;
+  // collapsed boxes hide their child boxes; attribute/text lines stay
+  const collapsed = !!o?.collapsed;
+  let collapsible = false;
+
   for (const c of el.children) {
     if (isEdgeElement(c) || (spec.refEdges?.has(c.kind) ?? false)) continue;
     // actor members are hoisted to the top level (rendered by layoutDiagram)
@@ -367,7 +379,8 @@ function measure(el: SysMLElement, depth: number, ctx: ViewContext): RelNode {
         if (line.trim()) attributes.push(line);
       }
     } else if (ctx.asBox(c) && depth < 6) {
-      children.push(measure(c, depth + 1, ctx));
+      collapsible = true;
+      if (!collapsed) children.push(measure(c, depth + 1, ctx));
     } else if (!suppressText && (spec.text.has(c.kind) || c.kind === "unknown")) {
       const line = attributeLine(c);
       if (line.trim()) attributes.push(line);
@@ -408,7 +421,6 @@ function measure(el: SysMLElement, depth: number, ctx: ViewContext): RelNode {
   // manual resize (saved layout): the stored size is a MINIMUM — the box keeps
   // it while the content fits and only grows on overflow, so moving children
   // inside an enlarged box does not inflate it further
-  const o = opts.offsets && opts.keyOf ? opts.offsets[opts.keyOf(el)] : undefined;
   if (o?.mw !== undefined || o?.mh !== undefined) {
     w = Math.max(w, o.mw ?? 0);
     h = Math.max(h, o.mh ?? 0);
@@ -426,6 +438,8 @@ function measure(el: SysMLElement, depth: number, ctx: ViewContext): RelNode {
     children,
     childPos,
     headerH: headerH + attrH,
+    collapsible: collapsible || undefined,
+    collapsed: collapsed || undefined,
   };
 }
 
@@ -458,6 +472,8 @@ function place(
     ports: [],
     children: [],
     depth,
+    collapsible: rel.collapsible,
+    collapsed: rel.collapsed,
   };
   boxByEl.set(rel.el, node);
 
@@ -741,6 +757,9 @@ export interface BoxLayout {
    *  further when its content no longer fits */
   mw?: number;
   mh?: number;
+  /** hide this box's child boxes (progressive disclosure); edges to hidden
+   *  descendants re-anchor to this box via nearestBox() */
+  collapsed?: boolean;
 }
 
 /** a port pinned to a border side at a 0..1 position (keys via portOffsetKey). */

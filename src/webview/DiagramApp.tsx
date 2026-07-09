@@ -459,6 +459,36 @@ export function DiagramApp() {
     vscode.postMessage({ type: "saveLayout", rootKey: layoutKey, offsets: next });
   };
 
+  const handleToggleCollapse = (key: string) => {
+    pushUndo();
+    const cur = offsets[key] ?? { dx: 0, dy: 0 };
+    const next = { ...offsets, [key]: { ...cur, collapsed: !cur.collapsed } };
+    setLayouts((prev) => ({ ...prev, [layoutKey]: next }));
+    vscode.postMessage({ type: "saveLayout", rootKey: layoutKey, offsets: next });
+  };
+
+  const handleCollapseAll = (keys: string[]) => {
+    if (!keys.length) return;
+    pushUndo();
+    const next = { ...offsets };
+    for (const key of keys) next[key] = { ...(next[key] ?? { dx: 0, dy: 0 }), collapsed: true };
+    setLayouts((prev) => ({ ...prev, [layoutKey]: next }));
+    vscode.postMessage({ type: "saveLayout", rootKey: layoutKey, offsets: next });
+  };
+
+  const handleExpandAll = () => {
+    const entries = Object.entries(offsets);
+    if (!entries.some(([, v]) => v.collapsed)) return;
+    pushUndo();
+    const next: LayoutOffsets = {};
+    for (const [k, v] of entries) {
+      const { collapsed: _c, ...rest } = v;
+      next[k] = rest;
+    }
+    setLayouts((prev) => ({ ...prev, [layoutKey]: next }));
+    vscode.postMessage({ type: "saveLayout", rootKey: layoutKey, offsets: next });
+  };
+
   const handleAnchorEdge = (
     key: string,
     which: "a" | "b" | null,
@@ -630,6 +660,9 @@ export function DiagramApp() {
         onDeleteElement={deleteElement}
         onStartConnect={startConnect}
         onBackgroundClick={handleBackgroundClick}
+        onToggleCollapse={handleToggleCollapse}
+        onCollapseAll={handleCollapseAll}
+        onExpandAll={handleExpandAll}
       />
     </div>
   );

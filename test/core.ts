@@ -186,6 +186,53 @@ test("bdd derives composition from usage structure", () => {
   }
 });
 
+test("collapsing a box hides its child boxes and re-anchors edges", () => {
+  const base = layoutDiagram(root, { kind: "bdd", keyOf: keyByQName });
+  // find a box that actually has visible child boxes to collapse
+  let container: DiagramNode | undefined;
+  const stack = [...base.nodes];
+  while (stack.length) {
+    const n = stack.shift()!;
+    if (n.collapsible && n.children.length > 0) { container = n; break; }
+    stack.push(...n.children);
+  }
+  assert.ok(container, "the bdd has a collapsible container");
+  // an edge whose endpoint is a descendant of the container (re-anchor target)
+  const isDescendant = (el: SysMLElement) => {
+    for (let c: SysMLElement | undefined = el; c; c = c.parent) if (c === container!.el) return true;
+    return false;
+  };
+  const edgeIntoChild = base.edges.some(
+    (e) => (e.a && isDescendant(e.a.el) && e.a.el !== container!.el) ||
+           (e.b && isDescendant(e.b.el) && e.b.el !== container!.el)
+  );
+
+  const key = keyByQName(container!.el);
+  const collapsed = layoutDiagram(root, {
+    kind: "bdd",
+    keyOf: keyByQName,
+    offsets: { [key]: { dx: 0, dy: 0, collapsed: true } },
+  });
+  const node = nodeByName(collapsed, container!.label);
+  assert.strictEqual(node.children.length, 0, "collapsed box hides its child boxes");
+  assert.ok(node.collapsed, "collapsed flag is set");
+  assert.ok(node.collapsible, "box is still marked collapsible (can expand)");
+  // no edge endpoint resolves to a now-hidden descendant box
+  for (const e of collapsed.edges) {
+    for (const end of [e.a, e.b]) {
+      if (end && isDescendant(end.el)) {
+        assert.strictEqual(end.el, container!.el, "edges re-anchor to the collapsed box");
+      }
+    }
+  }
+  if (edgeIntoChild) {
+    assert.ok(
+      collapsed.edges.some((e) => e.a?.el === container!.el || e.b?.el === container!.el),
+      "an edge that pointed into the container now anchors on it"
+    );
+  }
+});
+
 test("use case view merges same-named actors into one figure", () => {
   const pkg = find(root, "RobotUseCases", "package");
   const l = layoutDiagram(pkg, { kind: "uc" });
