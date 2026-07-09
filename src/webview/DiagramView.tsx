@@ -43,6 +43,8 @@ interface Interaction {
   liveAnchor?: { key: string; which: "a" | "b"; x: number; y: number } | null;
   /** open the context menu for a box / actor / port element */
   onNodeContextMenu: (el: SysMLElement, e: React.MouseEvent, named: boolean) => void;
+  /** toggle collapse for a box (hide / show its child boxes) */
+  onToggleCollapse: (el: SysMLElement) => void;
 }
 
 interface MenuItem {
@@ -84,6 +86,12 @@ interface Props {
   onStartConnect: (el: SysMLElement) => void;
   /** click on empty canvas (used by the add modes) */
   onBackgroundClick?: () => void;
+  /** toggle a box's collapsed state (hide / show its child boxes) */
+  onToggleCollapse: (key: string) => void;
+  /** collapse every currently-visible collapsible box */
+  onCollapseAll: (keys: string[]) => void;
+  /** expand all collapsed boxes */
+  onExpandAll: () => void;
 }
 
 /** edge kinds whose underlying statement can be safely deleted from the menu
@@ -243,6 +251,22 @@ function NodeBox({ node, it }: { node: DiagramNode; it: Interaction }) {
           rx={node.rounded ? 14 : 4}
           {...shapeProps}
         />
+      )}
+      {node.collapsible && (
+        <text
+          x={node.x + 8}
+          y={headerY + 8}
+          fontSize={12}
+          fill="#89b4fa"
+          style={{ cursor: "pointer" }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            it.onToggleCollapse(node.el);
+          }}
+        >
+          {node.collapsed ? "▸" : "▾"}
+        </text>
       )}
       <text
         x={node.x + node.w / 2}
@@ -513,6 +537,9 @@ export function DiagramView({
   onDeleteElement,
   onStartConnect,
   onBackgroundClick,
+  onToggleCollapse,
+  onCollapseAll,
+  onExpandAll,
 }: Props) {
   const viewRef = useRef<HTMLDivElement>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
@@ -859,6 +886,7 @@ export function DiagramView({
     liveAnchor: drag.live.anchor,
     onEdgeContextMenu,
     onNodeContextMenu,
+    onToggleCollapse: (el) => onToggleCollapse(keyOf(el)),
     onWaypointRemove: (edge, index) => {
       if (!edge.key) return;
       const base = edgeRoutingBase(edge);
@@ -870,6 +898,17 @@ export function DiagramView({
     },
     liveEdge: drag.live.edge,
   };
+
+  // keys of collapsible boxes currently expanded (for "collapse all")
+  const collapsibleKeys = useMemo(() => {
+    const keys: string[] = [];
+    const visit = (n: DiagramNode) => {
+      if (n.collapsible && !n.collapsed) keys.push(keyOf(n.el));
+      n.children.forEach(visit);
+    };
+    layout.nodes.forEach(visit);
+    return keys;
+  }, [layout, keyOf]);
 
   // edges of the currently selected element (line-style controls)
   const selectedEdges = layout.edges.filter((e) => e.el === selected && e.key);
@@ -885,6 +924,14 @@ export function DiagramView({
         <button onClick={fit} title="Fit to view">⤢ Fit</button>
         <button onClick={resetView} title="Reset zoom">100%</button>
         <button onClick={exportSvg} title="Save as SVG">⭳ SVG</button>
+        <button
+          onClick={() => onCollapseAll(collapsibleKeys)}
+          disabled={collapsibleKeys.length === 0}
+          title="Collapse all boxes (hide nested boxes)"
+        >
+          ▸ Collapse all
+        </button>
+        <button onClick={onExpandAll} title="Expand all collapsed boxes">▾ Expand all</button>
         <span className="diagram-zoom">{Math.round(view.scale * 100)}%</span>
         {mode === "select" && selectedEdges.length > 0 && (
           <>

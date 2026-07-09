@@ -57,6 +57,8 @@ type LayoutEntry = {
   /** manual minimum size (absolute) */
   mw?: number;
   mh?: number;
+  /** collapsed box: hide its child boxes (progressive disclosure) */
+  collapsed?: boolean;
   /** manually placed port: border side + 0..1 position along it */
   side?: "left" | "right" | "top" | "bottom";
   t?: number;
