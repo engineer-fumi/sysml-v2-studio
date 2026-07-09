@@ -530,14 +530,14 @@ export function DiagramApp() {
             </option>
           ))}
         </select>
-        <nav className="scope-breadcrumbs" aria-label="診断スコープ">
+        <nav className="scope-breadcrumbs" aria-label="Diagram scope">
           <button
             className="crumb"
             disabled={diagramRoot === combinedRoot}
             onClick={() => setRootKey("")}
-            title="モデル全体を表示"
+            title="Show the entire model"
           >
-            ⌂ モデル全体
+            ⌂ Entire model
           </button>
           {scopeCrumbs.map((el, i) => {
             const isCurrent = i === scopeCrumbs.length - 1;
