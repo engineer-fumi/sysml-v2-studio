@@ -231,6 +231,49 @@ test("metadata about (bodyless / with body) and anonymous satisfy parse and reso
   assert.strictEqual(resolver.resolve(p, "R1"), find(root, "R1"), "satisfy target resolves");
 });
 
+test("keywords may be used as declared feature names, but clauses are not swallowed", () => {
+  // OMG models declare features literally named with reserved words
+  // (`step entry`, `attribute type`, …). These parsed as errors before the
+  // atDeclName fix. Pin both directions: the name is taken, and a following
+  // clause keyword (subsets / redefines / accept shorthand) is NOT eaten.
+  const src = `package P {
+    state def S {
+      state entry[1];
+      state exit[1];
+      state do[1];
+    }
+    attribute type : String;
+    part p1 subsets Base;
+    part p2 { attribute :>> mass = 1; }
+    part p3 :> Base;
+  }`;
+  const r = parseSysML(src);
+  assert.deepStrictEqual(r.errors, [], "keyword-named features parse cleanly");
+  const root = r.root;
+  assert.strictEqual(find(root, "entry").kind, "state", "`state entry` names the state 'entry'");
+  assert.strictEqual(find(root, "type").kind, "attribute", "`attribute type` names it 'type'");
+  // `subsets Base` is a clause, not a name: p1 keeps its name and gains a specialization
+  assert.deepStrictEqual(find(root, "p1").specializes, ["Base"]);
+  assert.deepStrictEqual(find(root, "p2").children[0].redefines, ["mass"], "`:>> mass` stays a redefinition");
+});
+
+test("KerML `bool` scalar-feature abbreviation parses as an attribute", () => {
+  // Kernel Semantic Library declares Boolean-valued features with the `bool`
+  // abbreviation (Triggers.kerml, Observation.kerml). Modeled as an attribute.
+  const src = `behavior B {
+    private bool :>> signalCondition {
+      doc /* the condition */
+    }
+    in bool condition[1];
+    bool guard = true;
+  }`;
+  const r = parseSysML(src);
+  assert.deepStrictEqual(r.errors, [], "`bool` features parse cleanly");
+  const guard = find(r.root, "guard");
+  assert.strictEqual(guard.kind, "attribute", "`bool guard` is an attribute");
+  assert.strictEqual(guard.value, "true");
+});
+
 test("captures expression bodies whole (lambdas, mixed statements)", () => {
   const r = parseSysML(`package P {
     calc total {

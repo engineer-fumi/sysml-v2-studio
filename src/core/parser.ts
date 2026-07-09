@@ -52,6 +52,24 @@ const NON_NAME_KEYWORDS = new Set([
   "to", "then", "from", "by", "of", "via", "if", "else", "first",
 ]);
 
+/**
+ * Keywords that, in a declaration *name* position, always introduce a tail
+ * clause (typing / specialization / relationship / value / body) rather than
+ * naming the element. A feature named with one of these can't be told apart
+ * from the clause, so they are never treated as a declared name. Keywords NOT
+ * listed here (e.g. `entry`, `do`, `type`, `merge`, `while`) may legally be a
+ * feature's name — the standard/example models declare features called exactly
+ * that — and `atDeclName` accepts them when they aren't followed by another
+ * name (a real name is never immediately followed by another name).
+ */
+const DECL_CLAUSE_KEYWORDS = new Set([
+  "defined", "typed", "by", "conjugates", "conjugate", "chains", "crosses",
+  "featured", "inverse", "disjoint", "unions", "intersects", "differences",
+  "of", "specializes", "subsets", "redefines", "references", "ordered",
+  "nonunique", "non-unique", "parallel", "about", "from", "to", "connect",
+  "allocate", "default", "all",
+]);
+
 class Parser {
   private tokens: Token[];
   private pos = 0;
@@ -410,6 +428,14 @@ class Parser {
           this.next();
           this.eat("struct"); // `assoc struct` variant — modeled as an association
           return this.parseDeclaration("association", modifiers, direction, startTok);
+        }
+        case "bool": {
+          // KerML scalar-feature abbreviation `bool f [clauses] { … }` — a
+          // Boolean-valued feature. Parse as an attribute (scalar feature);
+          // the implicit Boolean typing is not attached (parse-only, avoids
+          // false "unresolved" in kernel files that don't import ScalarValues).
+          this.next();
+          return this.parseDeclaration("attribute", modifiers, direction, startTok);
         }
         default:
           if (DEF_KINDS.has(t.text)) {
@@ -1091,7 +1117,7 @@ class Parser {
       if (this.atIdentifier()) el.shortName = unquoteName(this.next().text);
       this.eat(">");
     }
-    if (this.atIdentifier()) {
+    if (this.atDeclName()) {
       const t = this.next();
       el.name = unquoteName(t.text);
       el.nameStart = t.start;
@@ -1151,6 +1177,23 @@ class Parser {
     const t = this.peek(offset);
     if (t.type === "identifier") return true;
     return t.type === "keyword" && !NON_NAME_KEYWORDS.has(t.text);
+  }
+
+  /**
+   * Are we at a token that can be the *declared name* of an element? Plain
+   * identifiers always qualify. A keyword qualifies only if it never
+   * introduces a tail clause (`DECL_CLAUSE_KEYWORDS`) *and* is not immediately
+   * followed by another name — if it is, the keyword is acting as a kind or
+   * clause (`accept cmd`, `subsets Foo`) rather than as the name. This lets
+   * features literally called `entry` / `do` / `type` / `merge` / `while`
+   * (as in the OMG models) parse, without swallowing clause keywords.
+   */
+  private atDeclName(): boolean {
+    if (this.atIdentifier()) return true;
+    const t = this.peek();
+    if (t.type !== "keyword") return false;
+    if (NON_NAME_KEYWORDS.has(t.text) || DECL_CLAUSE_KEYWORDS.has(t.text)) return false;
+    return !this.atNameToken(1);
   }
 
   /** A::B::C  (optionally ending with ::* for imports, optionally with dots) */
