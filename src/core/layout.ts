@@ -662,6 +662,61 @@ export function borderPoint(
   return { x: box.x + tt * box.w, y: box.y + box.h };
 }
 
+/** drop consecutive duplicate / collinear points from an orthogonal polyline */
+function collapseColinear(pts: { x: number; y: number }[]): { x: number; y: number }[] {
+  const out: { x: number; y: number }[] = [];
+  for (const p of pts) {
+    const n = out.length;
+    if (n >= 1 && out[n - 1].x === p.x && out[n - 1].y === p.y) continue;
+    if (n >= 2) {
+      const a = out[n - 2];
+      const b = out[n - 1];
+      if ((a.x === b.x && b.x === p.x) || (a.y === b.y && b.y === p.y)) {
+        out[n - 1] = p;
+        continue;
+      }
+    }
+    out.push(p);
+  }
+  return out;
+}
+
+/**
+ * Interior waypoints that route edge `i` of `n` parallel connections between the
+ * same two anchors down its own lane. The lane is offset perpendicular to the
+ * connection axis so N flows between one pair of ports render as N separated
+ * orthogonal lines instead of one drawn on top of another. Endpoints stay at the
+ * shared anchors (x1,y1)/(x2,y2). Obstacle avoidance is left to the single-edge
+ * router; a parallel bundle assumes a mostly-clear channel.
+ */
+function laneRoute(
+  x1: number, y1: number, x2: number, y2: number, i: number, n: number
+): { x: number; y: number }[] {
+  const GAP = 16;
+  const off = (i - (n - 1) / 2) * GAP;
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const stub = (span: number) => Math.max(6, Math.min(20, Math.abs(span) / 3));
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    const sgn = Math.sign(dx) || 1;
+    const s = stub(dx);
+    const laneY = (y1 + y2) / 2 + off;
+    const xa = x1 + sgn * s;
+    const xb = x2 - sgn * s;
+    return collapseColinear([
+      { x: xa, y: y1 }, { x: xa, y: laneY }, { x: xb, y: laneY }, { x: xb, y: y2 },
+    ]);
+  }
+  const sgn = Math.sign(dy) || 1;
+  const s = stub(dy);
+  const laneX = (x1 + x2) / 2 + off;
+  const ya = y1 + sgn * s;
+  const yb = y2 - sgn * s;
+  return collapseColinear([
+    { x: x1, y: ya }, { x: laneX, y: ya }, { x: laneX, y: yb }, { x: x2, y: yb },
+  ]);
+}
+
 function applyEdgeRouting(
   edges: DiagramEdge[],
   options: LayoutOptions,
@@ -674,6 +729,19 @@ function applyEdgeRouting(
   const router = autoRoute
     ? makeRouter([...boxByEl!.values()].map((n): RouteBox => ({ x: n.x, y: n.y, w: n.w, h: n.h, el: n.el })))
     : undefined;
+
+  // pass 1: assign keys, note manual routing, and group parallel auto-edges
+  // (edges sharing the same pair of endpoint nodes — e.g. two flows between the
+  // same two ports) so they can be fanned into distinct lanes instead of one
+  // line drawn on top of another.
+  const elId = new Map<SysMLElement, number>();
+  const gid = (el: SysMLElement): number => {
+    let id = elId.get(el);
+    if (id === undefined) elId.set(el, (id = elId.size));
+    return id;
+  };
+  const meta = new Map<DiagramEdge, { manual: boolean; entry?: LayoutEntry }>();
+  const groups = new Map<string, DiagramEdge[]>();
   for (const e of edges) {
     const base = `${options.keyOf ? options.keyOf(e.el) : ""}~edge~${e.kind}`;
     const i = counters.get(base) ?? 0;
@@ -681,9 +749,24 @@ function applyEdgeRouting(
     e.key = `${base}~${i}`;
     const entry = options.offsets?.[e.key];
     if (entry?.style) e.style = entry.style;
+    const manual = !!(entry?.wp?.length || entry?.anchorA || entry?.anchorB);
+    meta.set(e, { manual, entry });
+    if (autoRoute && !manual && e.a && e.b) {
+      const ia = gid(e.a.el);
+      const ib = gid(e.b.el);
+      const gk = ia < ib ? `${ia}|${ib}` : `${ib}|${ia}`;
+      (groups.get(gk) ?? groups.set(gk, []).get(gk)!).push(e);
+    }
+  }
+  const lane = new Map<DiagramEdge, { i: number; n: number }>();
+  for (const g of groups.values()) {
+    if (g.length > 1) g.forEach((e, i) => lane.set(e, { i, n: g.length }));
+  }
+
+  for (const e of edges) {
+    const { manual, entry } = meta.get(e)!;
     const wp = entry?.wp;
     const origin = edgeRoutingBase(e);
-    const manuallyRouted = !!(wp?.length || entry?.anchorA || entry?.anchorB);
     if (wp?.length && origin) {
       // `rel` waypoints follow the endpoint boxes; absolute ones are legacy
       e.points = entry!.rel
@@ -696,7 +779,12 @@ function applyEdgeRouting(
       e.y1 = p1.y;
       e.x2 = p2.x;
       e.y2 = p2.y;
-    } else if (router && e.a && e.b && !manuallyRouted) {
+    } else if (autoRoute && e.a && e.b && !manual && lane.has(e)) {
+      // parallel connection: fan into a distinct orthogonal lane while keeping
+      // the shared port anchors, so N flows read as N lines, not one.
+      const { i, n } = lane.get(e)!;
+      e.points = laneRoute(e.x1, e.y1, e.x2, e.y2, i, n);
+    } else if (router && e.a && e.b && !manual) {
       // engine default: orthogonal route around the boxes. Manual routing (above)
       // always wins; the router only fills edges the human hasn't touched.
       const path = router.route(

@@ -334,6 +334,39 @@ test("autoRoute fills orthogonal waypoints; off falls back to straight; manual w
   assert.deepStrictEqual(same.points, manualWp, "manual waypoints override the auto-router");
 });
 
+test("parallel edges between the same ports fan into separate lanes", () => {
+  const model = miniModel(`package P {
+    port def PT;
+    part def A { port pa : PT; }
+    part def B { port pb : ~PT; }
+    part def Ctx {
+      part a : A;
+      part b : B;
+      flow f1 from a.pa to b.pb;
+      flow f2 from a.pa to b.pb;
+    }
+  }`);
+  const ctx = find(model, "Ctx", "part def");
+  const l = layoutDiagram(ctx, { kind: "ibd", autoRoute: true });
+  const flows = l.edges.filter((e) => e.el.name === "f1" || e.el.name === "f2");
+  assert.strictEqual(flows.length, 2, "both flows present");
+  const [e1, e2] = flows;
+  // they share the same port anchors...
+  assert.deepStrictEqual([e1.x1, e1.y1, e1.x2, e1.y2], [e2.x1, e2.y1, e2.x2, e2.y2]);
+  // ...but get distinct interior routes (not drawn on top of each other)
+  assert.ok(e1.points?.length && e2.points?.length, "both are given waypoints");
+  assert.notDeepStrictEqual(e1.points, e2.points, "the two lanes differ");
+  // and every routed segment stays orthogonal
+  for (const e of flows) {
+    const pts = [{ x: e.x1, y: e.y1 }, ...e.points!, { x: e.x2, y: e.y2 }];
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const dx = Math.abs(pts[i + 1].x - pts[i].x);
+      const dy = Math.abs(pts[i + 1].y - pts[i].y);
+      assert.ok(dx < 0.5 || dy < 0.5, "lane segment is orthogonal");
+    }
+  }
+});
+
 test("i18n resolves locales, substitutes args, and keeps key parity", () => {
   assert.strictEqual(resolveLocale("ja"), "ja");
   assert.strictEqual(resolveLocale("zh-cn"), "zh-hans");
