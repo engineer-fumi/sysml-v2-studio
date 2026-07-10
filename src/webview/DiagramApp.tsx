@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SysMLElement, createElement, qualifiedName, walk } from "../core/ast";
 import { DIAGRAM_KINDS, DiagramKind, EdgeStyle, LayoutOffsets, PortSide } from "../core/layout";
+import { Locale, makeT } from "../core/i18n";
 import { SerializedModelFile, restoreParents } from "../core/serialize";
 import { DiagramView, EditMode } from "./DiagramView";
 
@@ -22,6 +23,8 @@ interface ModelMessage {
   kind?: DiagramKind;
   /** editor cursor at open time — scope the diagram to the element there */
   scopeAt?: { fileId: number; offset: number };
+  /** UI locale resolved from the editor (sent with the first model message) */
+  locale?: Locale;
 }
 
 interface HighlightMessage {
@@ -95,6 +98,8 @@ export function DiagramApp() {
   const [rootKey, setRootKey] = useState<string>("");
   const [kind, setKind] = useState<DiagramKind>("general");
   const kindInitialized = useRef(false);
+  const [locale, setLocale] = useState<Locale>("en");
+  const t = useMemo(() => makeT(locale), [locale]);
   const [selected, setSelected] = useState<SysMLElement | undefined>(undefined);
   const [mode, setMode] = useState<EditMode>("select");
   // type filter: element kinds hidden from the diagram (ephemeral view state)
@@ -179,6 +184,7 @@ export function DiagramApp() {
           kindInitialized.current = true;
           setKind(msg.kind);
         }
+        if (msg.locale) setLocale(msg.locale);
         if (msg.scopeAt && !scopeInitialized.current) setPendingScope(msg.scopeAt);
       } else if (msg.type === "highlight") {
         setPendingHighlight({ fileId: msg.fileId, offset: msg.offset });
@@ -575,27 +581,27 @@ export function DiagramApp() {
   return (
     <div className="app">
       <div className="header">
-        <span className="title">SysML Diagram</span>
+        <span className="title">{t("app.title")}</span>
         <select
           className="root-select kind-select"
           value={kind}
           onChange={(e) => changeKind(e.target.value as DiagramKind)}
-          title="Diagram kind"
+          title={t("header.kind")}
         >
           {DIAGRAM_KINDS.map((k) => (
             <option key={k.id} value={k.id}>
-              {k.label}
+              {t(`kind.${k.id}.label`)}
             </option>
           ))}
         </select>
-        <nav className="scope-breadcrumbs" aria-label="Diagram scope">
+        <nav className="scope-breadcrumbs" aria-label={t("scope.aria")}>
           <button
             className="crumb"
             disabled={diagramRoot === combinedRoot}
             onClick={() => setRootKey("")}
-            title="Show the entire model"
+            title={t("scope.showEntire")}
           >
-            ⌂ Entire model
+            {t("scope.entireModel")}
           </button>
           {scopeCrumbs.map((el, i) => {
             const isCurrent = i === scopeCrumbs.length - 1;
@@ -614,11 +620,11 @@ export function DiagramApp() {
             );
           })}
         </nav>
-        <span className="file-count">{files.length} files</span>
+        <span className="file-count">{t("header.files", files.length)}</span>
       </div>
       <div className="edit-toolbar">
-        {modeButton("select", "⬚ Select", "Click to select; drag named blocks to reposition")}
-        {modeButton("connect", "⌁ Connect", "Click two elements in order to insert a connect statement")}
+        {modeButton("select", t("mode.select"), t("mode.select.tip"))}
+        {modeButton("connect", t("mode.connect"), t("mode.connect.tip"))}
         <select
           className="add-select"
           value={mode.startsWith("add:") ? mode.slice(4) : ""}
@@ -626,15 +632,15 @@ export function DiagramApp() {
             setConnectSource(undefined);
             setMode(e.target.value ? (`add:${e.target.value}` as EditMode) : "select");
           }}
-          title="Choose element kind to add, then click a container or blank area (diagram root)"
+          title={t("add.tip")}
         >
-          <option value="">+ Add…</option>
-          <optgroup label="Usage">
+          <option value="">{t("add.placeholder")}</option>
+          <optgroup label={t("add.group.usage")}>
             {ADD_USAGE_KINDS.map((k) => (
               <option key={k} value={k}>{k}</option>
             ))}
           </optgroup>
-          <optgroup label="Definition">
+          <optgroup label={t("add.group.definition")}>
             {ADD_DEF_KINDS.map((k) => (
               <option key={k} value={k}>{k}</option>
             ))}
@@ -644,34 +650,35 @@ export function DiagramApp() {
           className="mode-btn"
           onClick={() => historyFnRef.current.undo()}
           disabled={historySize.undo === 0}
-          title="Undo layout, size, and edge edits (Cmd/Ctrl+Z)"
+          title={t("undo.tip")}
         >
-          ↩ Undo
+          {t("undo")}
         </button>
         <button
           className="mode-btn"
           onClick={() => historyFnRef.current.redo()}
           disabled={historySize.redo === 0}
-          title="Redo (Shift+Cmd/Ctrl+Z)"
+          title={t("redo.tip")}
         >
-          ↪ Redo
+          {t("redo")}
         </button>
-        <button className="mode-btn" onClick={resetLayout} title="Reset manual layout for this diagram">
-          ⟲ Reset layout
+        <button className="mode-btn" onClick={resetLayout} title={t("reset.tip")}>
+          {t("reset")}
         </button>
         <span className="mode-hint">
           {mode === "connect"
             ? connectSource
-              ? `Source: ${connectSource.name ?? connectSource.kind} → click target`
-              : "Click connection source"
+              ? t("hint.connect.source", connectSource.name ?? connectSource.kind)
+              : t("hint.connect.pick")
             : mode.startsWith("add:")
-              ? `Click where to add ${mode.slice(4)} — container or blank (diagram root) / Esc to cancel`
-              : "Double-click a block to zoom in · breadcrumb to go back · right-click for actions · drag to move · press ? for help"}
+              ? t("hint.add", mode.slice(4))
+              : t("hint.default")}
         </span>
       </div>
       <DiagramView
         root={diagramRoot}
         kind={kind}
+        t={t}
         selected={selected}
         marked={connectSource}
         mode={mode}

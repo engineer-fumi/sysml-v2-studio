@@ -14,6 +14,7 @@ import * as path from "node:path";
 import { createElement, qualifiedName, walk, SysMLElement } from "../src/core/ast";
 import { DiagramNode, DIAGRAM_KINDS, layoutDiagram, portOffsetKey } from "../src/core/layout";
 import { makeRouter, RouteBox } from "../src/core/edgeRouter";
+import { makeT, resolveLocale, LOCALE_DICTS } from "../src/core/i18n";
 import { parseSysML } from "../src/core/parser";
 import { Resolver } from "../src/core/resolve";
 import { STDLIB_FILES } from "../src/core/stdlib";
@@ -331,6 +332,28 @@ test("autoRoute fills orthogonal waypoints; off falls back to straight; manual w
   });
   const same = withManual.edges.find((e) => e.key === target.key)!;
   assert.deepStrictEqual(same.points, manualWp, "manual waypoints override the auto-router");
+});
+
+test("i18n resolves locales, substitutes args, and keeps key parity", () => {
+  assert.strictEqual(resolveLocale("ja"), "ja");
+  assert.strictEqual(resolveLocale("zh-cn"), "zh-hans");
+  assert.strictEqual(resolveLocale("zh-tw"), "zh-hans");
+  assert.strictEqual(resolveLocale("en-US"), "en");
+  assert.strictEqual(resolveLocale(undefined), "en");
+
+  // positional substitution + fallback to the key when missing
+  assert.strictEqual(makeT("ja")("header.files", 3), "3 ファイル");
+  assert.strictEqual(makeT("en")("does.not.exist"), "does.not.exist");
+
+  // every English key must exist (non-empty) in ja and zh-hans — missing
+  // translations are a bug, not a silent English fallback
+  const enKeys = Object.keys(LOCALE_DICTS.en);
+  for (const loc of ["ja", "zh-hans"] as const) {
+    const missing = enKeys.filter((k) => !LOCALE_DICTS[loc][k]?.trim());
+    assert.deepStrictEqual(missing, [], `${loc} is missing translations`);
+    const extra = Object.keys(LOCALE_DICTS[loc]).filter((k) => !(k in LOCALE_DICTS.en));
+    assert.deepStrictEqual(extra, [], `${loc} has stale keys not in en`);
+  }
 });
 
 test("use case view merges same-named actors into one figure", () => {
