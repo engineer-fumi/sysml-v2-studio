@@ -12,6 +12,7 @@ import {
   portOffsetKey,
 } from "../core/layout";
 import { SysMLElement } from "../core/ast";
+import { TFunc } from "../core/i18n";
 import { distToSegment, pathFor, sideAxis } from "./diagramGeometry";
 import { usePanZoom } from "./usePanZoom";
 import { DragStart, LivePort, useDiagramDrag } from "./useDiagramDrag";
@@ -59,6 +60,8 @@ interface Props {
   root: SysMLElement;
   /** diagram view kind (general / bdd / ibd / req / uc / state / action / seq) */
   kind: DiagramKind;
+  /** translator for the active UI locale */
+  t: TFunc;
   selected?: SysMLElement;
   /** secondary highlight (connect souce) */
   marked?: SysMLElement;
@@ -534,6 +537,7 @@ function EdgeLine({ edge, it }: { edge: DiagramEdge; it: Interaction }) {
 export function DiagramView({
   root,
   kind,
+  t,
   selected,
   marked,
   mode,
@@ -847,7 +851,7 @@ export function DiagramView({
     const style = edge.style ?? "straight";
     const items: MenuItem[] = [
       {
-        label: "Add waypoint",
+        label: t("menu.addWaypoint"),
         disabled: !routable,
         action: () => {
           const pts = [{ x: edge.x1, y: edge.y1 }, ...points, { x: edge.x2, y: edge.y2 }];
@@ -866,23 +870,23 @@ export function DiagramView({
         },
       },
       {
-        label: "Remove waypoint",
+        label: t("menu.removeWaypoint"),
         disabled: nearIndex < 0,
         action: () => commitRoute(edge, points.filter((_, i) => i !== nearIndex)),
       },
       {
-        label: "Clear all waypoints",
+        label: t("menu.clearWaypoints"),
         disabled: points.length === 0,
         action: () => onRouteEdge(edge.key!, []),
       },
       {
-        label: "Unpin endpoints",
+        label: t("menu.unpin"),
         disabled: !edge.pinnedA && !edge.pinnedB,
         action: () => onAnchorEdge(edge.key!, null),
       },
       { label: "", separator: true },
       ...EDGE_STYLES.map((st) => ({
-        label: `Line style: ${st.label}`,
+        label: t("menu.lineStyle", st.label),
         checked: style === st.value,
         action: () => onEdgeStyle(edge.key!, st.value),
       })),
@@ -890,7 +894,7 @@ export function DiagramView({
     if (DELETABLE_EDGE_KINDS.has(edge.kind) && edge.el.fileId !== undefined) {
       items.push(
         { label: "", separator: true },
-        { label: "Delete connection (from model)", action: () => onDeleteElement(edge.el) }
+        { label: t("menu.deleteConnection"), action: () => onDeleteElement(edge.el) }
       );
     }
     openMenu(e, items);
@@ -898,15 +902,15 @@ export function DiagramView({
 
   const onNodeContextMenu = (el: SysMLElement, e: React.MouseEvent, named: boolean) => {
     const items: MenuItem[] = [
-      { label: "Connect from here (connect)", action: () => onStartConnect(el) },
+      { label: t("menu.connectFrom"), action: () => onStartConnect(el) },
     ];
     if (named && el.fileId !== undefined) {
-      items.push({ label: "Rename (F2)", action: () => onRenameElement(el) });
+      items.push({ label: t("menu.rename"), action: () => onRenameElement(el) });
     }
     if (el.fileId !== undefined && el.kind !== "file") {
       items.push(
         { label: "", separator: true },
-        { label: "Delete (from model)", action: () => onDeleteElement(el) }
+        { label: t("menu.delete"), action: () => onDeleteElement(el) }
       );
     }
     openMenu(e, items);
@@ -961,9 +965,9 @@ export function DiagramView({
   // edges of the currently selected element (line-style controls)
   const selectedEdges = layout.edges.filter((e) => e.el === selected && e.key);
   const EDGE_STYLES: { value: EdgeStyle; label: string }[] = [
-    { value: "straight", label: "Straight" },
-    { value: "ortho", label: "Orthogonal" },
-    { value: "curve", label: "Curve" },
+    { value: "straight", label: t("linestyle.straight") },
+    { value: "ortho", label: t("linestyle.orthogonal") },
+    { value: "curve", label: t("linestyle.curve") },
   ];
 
   return (
@@ -972,44 +976,44 @@ export function DiagramView({
         <button
           className={showHelp ? "active" : undefined}
           onClick={() => setShowHelp((v) => !v)}
-          title="What is this diagram and how do I use it? (?)"
+          title={t("help.tip")}
         >
-          ? Help
+          {t("help")}
         </button>
-        <button onClick={fit} title="Fit to view">⤢ Fit</button>
-        <button onClick={resetView} title="Reset zoom">100%</button>
-        <button onClick={exportSvg} title="Save as SVG">⭳ SVG</button>
+        <button onClick={fit} title={t("fit.tip")}>{t("fit")}</button>
+        <button onClick={resetView} title={t("zoom.reset")}>100%</button>
+        <button onClick={exportSvg} title={t("svg.tip")}>{t("svg")}</button>
         <button
           onClick={() => onCollapseAll(collapsibleKeys)}
           disabled={collapsibleKeys.length === 0}
-          title="Collapse all boxes (hide nested boxes)"
+          title={t("collapseAll.tip")}
         >
-          ▸ Collapse all
+          {t("collapseAll")}
         </button>
-        <button onClick={onExpandAll} title="Expand all collapsed boxes">▾ Expand all</button>
+        <button onClick={onExpandAll} title={t("expandAll.tip")}>{t("expandAll")}</button>
         <button
           className={autoRoute ? "active" : undefined}
           onClick={onToggleAutoRoute}
-          title="Route wires orthogonally around boxes (engine default). Off = straight lines. Hand-routed wires are kept either way."
+          title={t("ortho.tip")}
         >
-          ⌐ Ortho wires
+          {t("ortho")}
         </button>
         {filterKinds.length > 1 && (
-          <span className="kind-filter" title="Show / hide element kinds">
-            <span className="kind-filter-label">Kinds:</span>
+          <span className="kind-filter" title={t("kinds.tip")}>
+            <span className="kind-filter-label">{t("kinds.label")}</span>
             {filterKinds.map((k) => (
               <button
                 key={k}
                 className={hiddenKinds.has(k) ? "kind-chip off" : "kind-chip"}
                 onClick={() => onToggleKind(k)}
-                title={hiddenKinds.has(k) ? `Show ${k}` : `Hide ${k}`}
+                title={hiddenKinds.has(k) ? t("kinds.show", k) : t("kinds.hide", k)}
               >
                 {k}
               </button>
             ))}
             {hiddenKinds.size > 0 && (
-              <button className="kind-chip clear" onClick={onClearKindFilter} title="Show all kinds">
-                ✕ clear
+              <button className="kind-chip clear" onClick={onClearKindFilter} title={t("kinds.clearAll")}>
+                {t("kinds.clear")}
               </button>
             )}
           </span>
@@ -1017,13 +1021,13 @@ export function DiagramView({
         <span className="diagram-zoom">{Math.round(view.scale * 100)}%</span>
         {mode === "select" && selectedEdges.length > 0 && (
           <>
-            <span className="diagram-zoom">Line style:</span>
+            <span className="diagram-zoom">{t("linestyle.label")}</span>
             {EDGE_STYLES.map((s) => (
               <button
                 key={s.value}
                 className={(selectedEdges[0].style ?? "straight") === s.value ? "active" : undefined}
                 onClick={() => selectedEdges.forEach((e) => onEdgeStyle(e.key!, s.value))}
-                title={`Draw selected line as ${s.label}`}
+                title={t("linestyle.draw", s.label)}
               >
                 {s.label}
               </button>
@@ -1031,36 +1035,38 @@ export function DiagramView({
             {selectedEdges.some((e) => e.points?.length) && (
               <button
                 onClick={() => selectedEdges.forEach((e) => onRouteEdge(e.key!, []))}
-                title="Remove all waypoints on selected lines"
+                title={t("waypoints.clearTip")}
               >
-                ⟲ Clear waypoints
+                {t("waypoints.clear")}
               </button>
             )}
           </>
         )}
       </div>
       {showHelp && (
-        <div className="diagram-help" role="dialog" aria-label="Diagram help">
+        <div className="diagram-help" role="dialog" aria-label={t("help.head")}>
           <div className="diagram-help-card">
             <div className="diagram-help-head">
-              <strong>SysML Diagram — quick help</strong>
-              <button className="diagram-help-close" onClick={() => setShowHelp(false)} title="Close (Esc)">✕</button>
+              <strong>{t("help.head")}</strong>
+              <button className="diagram-help-close" onClick={() => setShowHelp(false)} title={t("help.close")}>✕</button>
             </div>
             <p className="diagram-help-lead">
-              This diagram is a live <em>projection</em> of your model. Edit the <code>.sysml</code> file
-              and it updates automatically — the picture never changes your model unless you use its edit tools.
+              {t("help.lead1.a")}<em>{t("help.lead1.projection")}</em>{t("help.lead1.b")}
+              <code>.sysml</code>{t("help.lead1.c")}
             </p>
             <dl className="diagram-help-keys">
-              <dt>Double-click a block</dt><dd>Zoom in — make it the diagram scope</dd>
-              <dt>Breadcrumb (⌂ Entire model ›)</dt><dd>Go back up a level</dd>
-              <dt>Click</dt><dd>Select and reveal it in the editor</dd>
-              <dt>Right-click</dt><dd>Actions: connect, rename, delete, line style, waypoints</dd>
-              <dt>Drag · corner handles</dt><dd>Move a block · resize it</dd>
-              <dt>F2 · Delete · ⌘/Ctrl-Z</dt><dd>Rename · remove from model · undo layout edits</dd>
+              <dt>{t("help.k.dblclick")}</dt><dd>{t("help.k.dblclick.v")}</dd>
+              <dt>{t("help.k.breadcrumb")}</dt><dd>{t("help.k.breadcrumb.v")}</dd>
+              <dt>{t("help.k.click")}</dt><dd>{t("help.k.click.v")}</dd>
+              <dt>{t("help.k.right")}</dt><dd>{t("help.k.right.v")}</dd>
+              <dt>{t("help.k.drag")}</dt><dd>{t("help.k.drag.v")}</dd>
+              <dt>{t("help.k.keys")}</dt><dd>{t("help.k.keys.v")}</dd>
             </dl>
             <p className="diagram-help-lead">
-              Toolbar: pick a <strong>diagram kind</strong>, <strong>Collapse/Expand</strong> nesting,
-              toggle <strong>Ortho wires</strong> (orthogonal routing), and filter by <strong>Kinds</strong>.
+              {t("help.lead2.a")}<strong>{t("help.lead2.kind")}</strong>{t("help.lead2.b")}
+              <strong>{t("help.lead2.collapse")}</strong>{t("help.lead2.c")}
+              <strong>{t("help.lead2.ortho")}</strong>{t("help.lead2.d")}
+              <strong>{t("help.lead2.kinds")}</strong>{t("help.lead2.e")}
             </p>
           </div>
         </div>

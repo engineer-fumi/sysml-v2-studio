@@ -69,12 +69,12 @@
     "commands": [
       {
         "command": "sysml.openDiagram",
-        "title": "SysML: Open Diagram",
+        "title": "%cmd.openDiagram.title%",
         "icon": "$(type-hierarchy-sub)"
       },
       {
         "command": "sysml.openDiagramAs",
-        "title": "SysML: Open Diagram by Kind",
+        "title": "%cmd.openDiagramAs.title%",
         "icon": "$(type-hierarchy)"
       }
     ],

@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { DIAGRAM_KINDS, DiagramKind } from "../core/layout";
+import { makeT, resolveLocale } from "../core/i18n";
 import { STDLIB_FILES } from "../core/stdlib";
 import { DiagramPanel } from "./diagramPanel";
 import {
@@ -40,13 +41,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       DiagramPanel.createOrShow(context, index);
     }),
     vscode.commands.registerCommand("sysml.openDiagramAs", async () => {
+      const t = makeT(resolveLocale(vscode.env.language));
       const picked = await vscode.window.showQuickPick(
         DIAGRAM_KINDS.map((k) => ({
-          label: k.label,
-          description: k.description,
+          label: t(`kind.${k.id}.label`),
+          description: t(`kind.${k.id}.desc`),
           id: k.id as DiagramKind,
         })),
-        { placeHolder: "Select diagram kind to open" }
+        { placeHolder: t("qp.selectKind") }
       );
       if (picked) DiagramPanel.createOrShow(context, index, picked.id);
     })

@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { SysMLElement, walk } from "../core/ast";
 import { DiagramKind, diagramKindLabel } from "../core/layout";
+import { resolveLocale } from "../core/i18n";
 import { SerializedModelFile, stripParents } from "../core/serialize";
 import { IndexedFile, ModelIndex } from "./modelIndex";
 
@@ -230,8 +231,9 @@ export class DiagramPanel {
     // pushes don't undo a kind switch or re-scope made in the webview
     const kind = this.kindSent ? undefined : this.kind;
     const scopeAt = this.kindSent ? undefined : this.initialScope;
+    const locale = this.kindSent ? undefined : resolveLocale(vscode.env.language);
     this.kindSent = true;
-    await this.panel.webview.postMessage({ type: "model", files, layouts, kind, scopeAt });
+    await this.panel.webview.postMessage({ type: "model", files, layouts, kind, scopeAt, locale });
   }
 
   // ---- layout sidecar ----------------------------------------------------
